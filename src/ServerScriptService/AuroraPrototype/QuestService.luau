@@ -73,20 +73,20 @@ function QuestService.View(player)
 	local description
 	if quest.Id == "Q01" then
 		if not quest.Spoke then
-			description = "Q01: fale com o instrutor (E)"
+			description = "Aproxime-se do INSTRUTOR AZUL e pressione E."
 		elseif not quest.DummyHit then
-			description = "Q01: acerte o boneco de treino (clique ou 1)"
+			description = "Chegue perto do BONECO DE MADEIRA e clique nele para atacar."
 		else
-			description = "Q01: volte ao instrutor"
+			description = "Volte ao INSTRUTOR AZUL e pressione E."
 		end
 	elseif quest.Id == "Q02" then
 		if quest.Kills >= 3 then
-			description = "Q02: volte ao instrutor para receber o martelo raro"
+			description = "Volte ao INSTRUTOR AZUL e pressione E para receber o martelo."
 		else
-			description = ("Q02: derrote slimes (%d/3)"):format(quest.Kills or 0)
+			description = ("Derrote os SLIMES VERDES no campo: %d/3."):format(quest.Kills or 0)
 		end
 	else
-		description = "Primeira sequência concluída!"
+		description = "Treino concluído! Martelo raro recebido."
 	end
 	return {
 		ClassId = data.ClassId,

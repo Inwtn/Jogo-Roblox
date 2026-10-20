@@ -3,7 +3,13 @@ local DataStoreService = game:GetService("DataStoreService")
 local HttpService = game:GetService("HttpService")
 
 local Config = require(script.Parent.Config)
-local store = DataStoreService:GetDataStore(Config.DataStoreName)
+local storeAvailable, storeOrError = pcall(function()
+	return DataStoreService:GetDataStore(Config.DataStoreName)
+end)
+local store = storeAvailable and storeOrError or nil
+if not store then
+	warn("Aurora: DataStore indisponível; esta sessão não será salva: " .. tostring(storeOrError))
+end
 local sessionId = HttpService:GenerateGUID(false)
 local profiles = {}
 local saving = {}
@@ -61,6 +67,10 @@ local function safeProfile(raw, userId)
 end
 
 function DataService.Load(player)
+	if not store then
+		profiles[player] = { Data = fresh(player.UserId), ReadOnly = true }
+		return profiles[player]
+	end
 	local key = "User_" .. player.UserId
 	local lockConflict = false
 	local incompatible = false

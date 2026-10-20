@@ -34,10 +34,35 @@ local function createSlime(folder, position, index)
 	body.Color = Color3.fromRGB(78, 205, 103)
 	body.Position = position
 	body.Parent = model
+	local board = Instance.new("BillboardGui")
+	board.Name = "Nameplate"
+	board.Adornee = body
+	board.AlwaysOnTop = true
+	board.MaxDistance = 75
+	board.Size = UDim2.fromOffset(125, 35)
+	board.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+	board.Parent = body
+	local text = Instance.new("TextLabel")
+	text.Name = "HealthText"
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundColor3 = Color3.fromRGB(20, 40, 25)
+	text.BackgroundTransparency = 0.05
+	text.Font = Enum.Font.GothamBold
+	text.TextColor3 = Color3.fromRGB(172, 255, 176)
+	text.TextSize = 14
+	text.Text = ("SLIME VERDE  %d/%d"):format(Config.Slime.MaxHealth, Config.Slime.MaxHealth)
+	text.Parent = board
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = text
 	model.PrimaryPart = body
 	model.Parent = folder
 	model:SetAttribute("Health", Config.Slime.MaxHealth)
-	return { Model = model, Body = body, Home = position, Health = Config.Slime.MaxHealth, Dead = false, Hits = {}, LastAttack = 0 }
+	return { Model = model, Body = body, Nameplate = board, HealthText = text, Home = position, Health = Config.Slime.MaxHealth, Dead = false, Hits = {}, LastAttack = 0 }
+end
+
+local function updateHealth(slime)
+	slime.HealthText.Text = ("SLIME VERDE  %d/%d"):format(slime.Health, Config.Slime.MaxHealth)
 end
 
 function EnemyService.Start(folder, positions)
@@ -73,6 +98,7 @@ function EnemyService.Start(folder, positions)
 			else
 				slime.Health = Config.Slime.MaxHealth
 				slime.Model:SetAttribute("Health", slime.Health)
+				updateHealth(slime)
 				slime.Hits = {}
 			end
 			local offset = destination - position
@@ -102,10 +128,12 @@ function EnemyService.Attack(player, target, dummy)
 			attackTimes[player] = now
 			slime.Health = math.max(0, slime.Health - Config.Paladin.AttackDamage)
 			slime.Model:SetAttribute("Health", slime.Health)
+			updateHealth(slime)
 			slime.Hits[player] = now
 			if slime.Health == 0 then
 				slime.Dead = true
 				slime.Body.Transparency = 1
+				slime.Nameplate.Enabled = false
 				for contributor, hitTime in slime.Hits do
 					local contributorRoot = rootOf(contributor)
 					if contributor.Parent == Players and contributorRoot and now - hitTime <= 30 and (contributorRoot.Position - slime.Body.Position).Magnitude <= 60 then
@@ -119,6 +147,8 @@ function EnemyService.Attack(player, target, dummy)
 					slime.Body.Position = slime.Home
 					slime.Body.Transparency = 0
 					slime.Model:SetAttribute("Health", slime.Health)
+					updateHealth(slime)
+					slime.Nameplate.Enabled = true
 					slime.Dead = false
 				end)
 			end

@@ -1,13 +1,25 @@
-# Instalar a primeira versão no Roblox Studio
+# Jogar e instalar a primeira versão no Roblox Studio
+
+## Testar o jogo que já está aberto
+
+O arquivo `C:\Users\isaac\OneDrive\Documentos\Jogo Roblox\MeuJogoRoblox.rbxl.rbxl` já contém `ServerScriptService > AuroraPrototype` atualizado. Abra esse arquivo e clique em **Play**. A arena aparece somente durante a partida; no modo de edição, a baseplate vazia é normal.
+
+1. O **instrutor azul** e o **boneco de madeira** ficam à frente do personagem, com nomes sobre eles.
+2. Pressione **E** perto do instrutor azul.
+3. Aproxime-se do boneco de madeira e **clique nele** para atacar.
+4. Volte ao instrutor e pressione **E**. Depois derrote **3 slimes verdes** no campo e converse com ele mais uma vez.
+
+A caixa **PRÓXIMO PASSO**, no canto inferior esquerdo, mostra a ação atual. Se aparecer “Teste local: progresso não será salvo”, a missão ainda funciona nessa partida, mas reinicia no próximo Play.
 
 ## Arquivo pronto para importar
 
 `C:\Users\isaac\OneDrive\Documentos\Jogo Roblox\Studio\ServerScriptService\AuroraPrototype.rbxmx`
 
-1. Abra `C:\Users\isaac\OneDrive\Documentos\Jogo Roblox\MeuJogoRoblox.rbxl.rbxl` no Roblox Studio e salve uma cópia para testes.
-2. Ative **Explorer**. Clique com o botão direito em **ServerScriptService** e escolha **Insert > Import Roblox Model**.
-3. Selecione o arquivo `.rbxmx` acima. Deve aparecer `ServerScriptService > AuroraPrototype`, contendo `Bootstrap`, `Config`, `DataService`, `EnemyService`, `QuestService`, `TestArena` e `Client`.
-4. Clique em **Play**. O servidor cria a arena de teste e três slimes. Converse com o instrutor, acerte o boneco, converse novamente, derrote três slimes e entregue Q02.
+Para usar o pacote em outro lugar, abra esse lugar no Roblox Studio e salve uma cópia para testes.
+
+1. Ative **Explorer**. Clique com o botão direito em **ServerScriptService** e escolha **Insert > Import Roblox Model**.
+2. Selecione o arquivo `.rbxmx` acima. Deve aparecer `ServerScriptService > AuroraPrototype`, contendo `Bootstrap`, `Config`, `DataService`, `EnemyService`, `QuestService`, `TestArena` e `Client`.
+3. Clique em **Play**. Se abrir uma janela chamada **Servidor**, use **Teste > Adicionar clientes** e jogue na janela **Place1**. A câmera da janela Servidor pode continuar apontando para a baseplate: a arena foi criada longe dela. No Explorer do servidor, confira `Workspace > AuroraTestArena` e `Workspace > AuroraEnemies`.
 
 Este pacote contém os scripts necessários para essa primeira sequência. Importe apenas o `.rbxmx`; as outras pastas locais mostram onde os sistemas vão crescer. Ao iniciar o Play, o pacote cria `Workspace > AuroraTestArena`, `Workspace > AuroraEnemies` e `ReplicatedStorage > AuroraRemotes`. Ele também coloca a HUD em `PlayerGui`. Esses objetos temporários são gerados durante o jogo.
 
@@ -24,4 +36,4 @@ Este pacote contém os scripts necessários para essa primeira sequência. Impor
 
 Para atualizar os scripts, edite os arquivos em `src/ServerScriptService/AuroraPrototype`, execute `powershell -ExecutionPolicy Bypass -File tools/Build-Model.ps1`, remova a cópia antiga de `AuroraPrototype` no Studio e importe o novo `.rbxmx`. A pasta `Studio` local não sincroniza automaticamente com o Studio.
 
-O teste de salvamento exige uma experiência de teste publicada separada com acesso do Studio a serviços de API. Sem esse acesso, o jogo avisa na HUD que o progresso da sessão não será gravado. A execução no Studio ainda precisa ser validada.
+O teste de salvamento exige uma experiência de teste publicada separada com acesso do Studio a serviços de API. Sem esse acesso, o jogo avisa na HUD que o progresso da sessão não será gravado. No Studio, a arena, os slimes, a HUD e a primeira conversa com o instrutor foram verificados; as missões completas e a reconexão ainda precisam de teste.
