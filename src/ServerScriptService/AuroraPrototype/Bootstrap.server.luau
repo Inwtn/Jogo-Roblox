@@ -11,6 +11,7 @@ local DataService = require(script.Parent.DataService)
 local QuestService = require(script.Parent.QuestService)
 local TestArena = require(script.Parent.TestArena)
 local EnemyService = require(script.Parent.EnemyService)
+local PaladinVisual = require(script.Parent.PaladinVisual)
 
 local arena = TestArena.Create()
 EnemyService.Start(arena.Enemies, arena.SlimePositions)
@@ -40,7 +41,15 @@ end
 
 local function send(player)
 	local current = view(player)
-	if current then stateChanged:FireClient(player, current) end
+	if not current then return end
+	local equipment = player.Character and player.Character:FindFirstChild("AuroraEquipment")
+	local head = equipment and equipment:FindFirstChild("CabeçaDoMartelo")
+	if head then
+		local rare = current.Weapon == "paladin_rare"
+		head.Color = rare and Color3.fromRGB(255, 205, 84) or Color3.fromRGB(150, 168, 177)
+		head.Material = rare and Enum.Material.Neon or Enum.Material.Metal
+	end
+	stateChanged:FireClient(player, current)
 end
 
 getState.OnServerInvoke = function(player)
@@ -59,6 +68,12 @@ arena.TrainerPrompt.Triggered:Connect(function(player)
 	QuestService.Trainer(player)
 end)
 
+arena.DummyPrompt.Triggered:Connect(function(player)
+	local state = DataService.Get(player)
+	if not state or state.Data.ClassId ~= "paladin" then return end
+	EnemyService.Attack(player, arena.Dummy, arena.Dummy)
+end)
+
 QuestService.Changed.Event:Connect(send)
 
 local function onCharacter(player, character)
@@ -68,6 +83,7 @@ local function onCharacter(player, character)
 	humanoid.MaxHealth = Config.Paladin.MaxHealth
 	humanoid.Health = humanoid.MaxHealth
 	character:PivotTo(CFrame.new(arena.Spawn.Position + Vector3.new(0, 5, 0)))
+	if player:HasAppearanceLoaded() then PaladinVisual.Equip(character) end
 	humanoid.HealthChanged:Connect(function() send(player) end)
 	send(player)
 end
@@ -89,6 +105,10 @@ local function onPlayer(player)
 		copy.Parent = host
 		host.Parent = playerGui
 	end
+	player.CharacterAppearanceLoaded:Connect(function(character)
+		PaladinVisual.Equip(character)
+		send(player)
+	end)
 	player.CharacterAdded:Connect(function(character) onCharacter(player, character) end)
 	if player.Character then onCharacter(player, player.Character) end
 	send(player)

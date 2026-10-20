@@ -56,6 +56,9 @@ function Add-Item($parent, [string]$class, [string]$name, [string]$file) {
 
 $sources = @(
     @{ Class = 'ModuleScript'; Name = 'Config'; Path = 'src/ServerScriptService/AuroraPrototype/Config.luau' },
+    @{ Class = 'ModuleScript'; Name = 'Art'; Path = 'src/ServerScriptService/AuroraPrototype/Art.luau' },
+    @{ Class = 'ModuleScript'; Name = 'WorldBuilder'; Path = 'src/ServerScriptService/AuroraPrototype/WorldBuilder.luau' },
+    @{ Class = 'ModuleScript'; Name = 'PaladinVisual'; Path = 'src/ServerScriptService/AuroraPrototype/PaladinVisual.luau' },
     @{ Class = 'ModuleScript'; Name = 'DataService'; Path = 'src/ServerScriptService/AuroraPrototype/DataService.luau' },
     @{ Class = 'ModuleScript'; Name = 'QuestService'; Path = 'src/ServerScriptService/AuroraPrototype/QuestService.luau' },
     @{ Class = 'ModuleScript'; Name = 'TestArena'; Path = 'src/ServerScriptService/AuroraPrototype/TestArena.luau' },

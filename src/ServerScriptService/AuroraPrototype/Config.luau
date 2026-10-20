@@ -6,7 +6,7 @@ Config.MaxLevel = 10
 Config.SaveInterval = 60
 Config.LockSeconds = 180
 Config.TestArenaCenter = Vector3.new(600, 8, 0)
-Config.SafeRadius = 17
+Config.SafeRadius = 28
 
 Config.Paladin = {
 	MaxHealth = 100,

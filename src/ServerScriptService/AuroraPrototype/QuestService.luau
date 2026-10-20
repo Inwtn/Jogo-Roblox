@@ -73,15 +73,15 @@ function QuestService.View(player)
 	local description
 	if quest.Id == "Q01" then
 		if not quest.Spoke then
-			description = "Aproxime-se do INSTRUTOR AZUL e pressione E."
+			description = "Converse com Aldric, o instrutor da vila. Pressione E de perto."
 		elseif not quest.DummyHit then
-			description = "Chegue perto do BONECO DE MADEIRA e clique nele para atacar."
+			description = "Acerte o boneco de treino. Clique nele ou pressione F de perto."
 		else
-			description = "Volte ao INSTRUTOR AZUL e pressione E."
+			description = "Volte a Aldric e pressione E para concluir o treinamento."
 		end
 	elseif quest.Id == "Q02" then
 		if quest.Kills >= 3 then
-			description = "Volte ao INSTRUTOR AZUL e pressione E para receber o martelo."
+			description = "Volte a Aldric e pressione E para receber o martelo."
 		else
 			description = ("Derrote os SLIMES VERDES no campo: %d/3."):format(quest.Kills or 0)
 		end

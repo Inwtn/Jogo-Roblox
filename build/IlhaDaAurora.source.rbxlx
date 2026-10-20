@@ -1,0 +1,1575 @@
+<?xml version="1.0" encoding="utf-8"?>
+<roblox version="4" xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd">
+  <External>null</External>
+  <External>nil</External>
+  <Item class="Workspace" referent="SERVICE_Workspace">
+    <Properties>
+      <string name="Name">Workspace</string>
+    </Properties>
+    <Item class="Terrain" referent="TERRAIN_AURORA">
+      <Properties>
+        <string name="Name">Terrain</string>
+        <bool name="Decoration">true</bool>
+        <float name="GrassLength">0.7</float>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="SERVICE_ServerScriptService">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="RBX0">
+      <Properties>
+        <string name="Name">AuroraGame</string>
+      </Properties>
+      <Item class="ModuleScript" referent="RBX1">
+        <Properties>
+          <string name="Name">Config</string>
+          <ProtectedString name="Source"><![CDATA[local Config = {}
+
+Config.SchemaVersion = 1
+Config.DataStoreName = "AuroraProfiles_Dev_v1"
+Config.MaxLevel = 10
+Config.SaveInterval = 60
+Config.LockSeconds = 180
+Config.TestArenaCenter = Vector3.new(600, 8, 0)
+Config.SafeRadius = 28
+
+Config.Paladin = {
+	MaxHealth = 100,
+	AttackDamage = 18,
+	AttackRange = 11,
+	AttackCooldown = 0.65,
+}
+
+Config.Slime = {
+	MaxHealth = 35,
+	Damage = 8,
+	XP = 10,
+	DetectRange = 36,
+	LeashRange = 38,
+	AttackRange = 5,
+	Speed = 7,
+	AttackCooldown = 1.6,
+	RespawnSeconds = 6,
+}
+
+function Config.XPToNextLevel(level)
+	return 60 + 20 * level
+end
+
+return Config
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX2">
+        <Properties>
+          <string name="Name">Art</string>
+          <ProtectedString name="Source"><![CDATA[-- Biblioteca de cenário original. Cada objeto continua editável no Studio.
+local Art = {}
+local V = Vector3.new
+local C = Color3.fromRGB
+local wood, darkWood = C(112, 73, 43), C(66, 45, 32)
+local gold, blue = C(201, 153, 67), C(44, 86, 133)
+
+function Art.Model(parent, name)
+	local model = Instance.new("Model")
+	model.Name = name
+	model.Parent = parent
+	return model
+end
+
+function Art.Part(parent, name, size, cf, color, material, shape, collide)
+	local p = Instance.new(shape == "Wedge" and "WedgePart" or "Part")
+	p.Name = name
+	p.Size = size
+	p.CFrame = typeof(cf) == "Vector3" and CFrame.new(cf) or cf
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Anchored = true
+	p.CanCollide = collide == true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	if shape == "Ball" then p.Shape = Enum.PartType.Ball end
+	if shape == "Cylinder" then p.Shape = Enum.PartType.Cylinder end
+	p.Parent = parent
+	return p
+end
+
+function Art.Beam(parent, name, a, b, width, color, material, round)
+	local mid = (a + b) * 0.5
+	local cf = CFrame.lookAt(mid, b)
+	if round then
+		return Art.Part(parent, name, V((b-a).Magnitude, width, width), cf * CFrame.Angles(0, math.pi/2, 0), color, material, "Cylinder")
+	end
+	return Art.Part(parent, name, V(width, width, (b-a).Magnitude), cf, color, material)
+end
+
+local function oval(parent, name, position, size, color, material)
+	return Art.Part(parent, name, size, position, color, material, "Ball")
+end
+
+-- Superfícies trianguladas para copas com silhueta irregular e faces amplas.
+local function triangle(parent,a,b,c,color)
+	local ab,ac,bc=b-a,c-a,c-b
+	if ab:Dot(ab)>ac:Dot(ac) and ab:Dot(ab)>bc:Dot(bc) then c,a=a,c
+	elseif ac:Dot(ac)>bc:Dot(bc) then a,b=b,a end
+	ab,ac,bc=b-a,c-a,c-b
+	local right=ac:Cross(ab).Unit
+	local up=bc:Cross(right).Unit
+	local back=bc.Unit
+	local height=math.abs(ab:Dot(up))
+	Art.Part(parent,"Folha",V(0.05,height,math.abs(ab:Dot(back))),CFrame.fromMatrix((a+b)/2,right,up,back),color,Enum.Material.SmoothPlastic,"Wedge")
+	Art.Part(parent,"Folha",V(0.05,height,math.abs(ac:Dot(back))),CFrame.fromMatrix((a+c)/2,-right,up,-back),color,Enum.Material.SmoothPlastic,"Wedge")
+end
+
+local function crown(parent,position,size,color,seed)
+	local m=Art.Model(parent,"CopaModelada")
+	local t=(1+math.sqrt(5))/2
+	local points={V(-1,t,0),V(1,t,0),V(-1,-t,0),V(1,-t,0),V(0,-1,t),V(0,1,t),V(0,-1,-t),V(0,1,-t),V(t,0,-1),V(t,0,1),V(-t,0,-1),V(-t,0,1)}
+	local faces={{1,12,6},{1,6,2},{1,2,8},{1,8,11},{1,11,12},{2,6,10},{6,12,5},{12,11,3},{11,8,7},{8,2,9},{4,10,5},{4,5,3},{4,3,7},{4,7,9},{4,9,10},{5,10,6},{3,5,12},{7,3,11},{9,7,8},{10,9,2}}
+	local r=Random.new(seed)
+	for i,p in points do points[i]=position+p.Unit*size*0.57*r:NextNumber(0.88,1.13) end
+	for _,f in faces do
+		local variation=r:NextNumber(-0.045,0.045)
+		local shade=C(math.clamp(color.R*255+variation*255,0,255),math.clamp(color.G*255+variation*255,0,255),math.clamp(color.B*255+variation*140,0,255))
+		triangle(m,points[f[1]],points[f[2]],points[f[3]],shade)
+	end
+	return m
+end
+
+function Art.Tree(parent, position, scale, seed)
+	local model = Art.Model(parent, "Carvalho")
+	local r = Random.new(seed)
+	local function pt(x, y, z) return position + V(x, y, z) * scale end
+	local trunk = Art.Beam(model, "Tronco", pt(0,0,0), pt(0.7,11,0.2), 2.3*scale, wood, Enum.Material.Wood, true)
+	trunk.CanCollide = true
+	for i=1,5 do
+		local angle = i*math.pi*2/5
+		Art.Beam(model, "Raiz", pt(math.cos(angle)*2.7,0.1,math.sin(angle)*2.7), pt(0,2.3,0), 0.8*scale, darkWood, Enum.Material.Wood, true)
+		local x, z = math.cos(angle)*4.7, math.sin(angle)*4.7
+		Art.Beam(model, "Galho", pt(0.4,7.5,0), pt(x,12.8,z), 0.8*scale, wood, Enum.Material.Wood, true)
+		crown(model,pt(x,14+r:NextNumber(-1,1),z),V(9,7,8)*scale,
+			C(r:NextInteger(58,83),r:NextInteger(117,147),r:NextInteger(43,61)),seed+i*137)
+	end
+	crown(model,pt(0.8,17,0),V(10,8,9)*scale,C(91,151,61),seed+949)
+	return model
+end
+
+function Art.Rock(parent, position, scale, seed)
+	local r = Random.new(seed)
+	local model = Art.Model(parent, "RochaMusgosa")
+	local cf = CFrame.new(position) * CFrame.Angles(0,r:NextNumber(0,6.28),0)
+	Art.Part(model,"Nucleo",V(4.5,3,4)*scale,cf*CFrame.new(0,1.1*scale,0)*CFrame.Angles(0.2,0,0.12),C(112,121,115),Enum.Material.Rock,"Ball",true)
+	for i=1,3 do
+		Art.Part(model,"Face",V(2.8,2.6,3.1)*scale,cf*CFrame.new((i-2)*1.4*scale,0.8*scale,0)*CFrame.Angles(0,i*1.7,0),
+			C(101+i*6,111+i*6,108+i*5),Enum.Material.Rock,"Wedge",true)
+	end
+	oval(model,"Musgo",position+V(0,2.5,0)*scale,V(3.3,0.5,2.6)*scale,C(100,130,66),Enum.Material.Grass)
+	return model
+end
+
+function Art.Lantern(parent, cf)
+	local model = Art.Model(parent,"Lanterna")
+	Art.Part(model,"Base",V(1.1,0.2,1.1),cf*CFrame.new(0,-0.7,0),darkWood,Enum.Material.Metal)
+	Art.Part(model,"Tampa",V(1.3,0.3,1.3),cf*CFrame.new(0,0.7,0),darkWood,Enum.Material.Metal)
+	local flame=Art.Part(model,"Luz",V(0.65,1.15,0.65),cf,C(255,207,122),Enum.Material.Neon)
+	for _,x in {-0.45,0.45} do for _,z in {-0.45,0.45} do
+		Art.Part(model,"Grade",V(0.12,1.4,0.12),cf*CFrame.new(x,0,z),darkWood,Enum.Material.Metal)
+	end end
+	local light=Instance.new("PointLight")
+	light.Color=C(255,193,111); light.Range=15; light.Brightness=0.8; light.Shadows=true; light.Parent=flame
+	return model
+end
+
+function Art.Cottage(parent, position, yaw, scale, name)
+	local m=Art.Model(parent,name)
+	local cf=CFrame.new(position)*CFrame.Angles(0,math.rad(yaw),0)
+	local function p(n,s,v,col,mat,shape,rot,collide)
+		return Art.Part(m,n,s*scale,cf*CFrame.new(v*scale)*(rot or CFrame.identity),col,mat,shape,collide)
+	end
+	p("Fundacao",V(19,1.8,17),V(0,0.9,0),C(122,123,112),Enum.Material.Cobblestone,nil,nil,true)
+	p("Reboco",V(17,10,15),V(0,6.6,0),C(230,210,165),Enum.Material.Plaster,nil,nil,true)
+	for _,x in {-8.5,0,8.5} do p("Coluna",V(0.7,10.8,0.8),V(x,6.6,7.55),darkWood,Enum.Material.Wood) end
+	for _,z in {-7.5,7.5} do
+		for _,y in {2,6,11.5} do p("Viga",V(18,0.65,0.7),V(0,y,z),wood,Enum.Material.Wood) end
+		for _,x in {-8.5,8.5} do p("Canto",V(0.8,10.6,0.8),V(x,6.6,z),darkWood,Enum.Material.Wood) end
+	end
+	for _,x in {-8.55,8.55} do
+		for _,y in {2,6,11.5} do p("Lateral",V(0.7,0.65,15),V(x,y,0),wood,Enum.Material.Wood) end
+	end
+	for _,x in {-4.5,4.5} do
+		p("Contraventamento",V(0.5,5.8,0.5),V(x,8.8,7.7),wood,Enum.Material.Wood,nil,CFrame.Angles(0,0,math.rad(x<0 and -42 or 42)))
+	end
+	-- Duas águas com beiral, cumeeira e fileiras de telhas sobrepostas.
+	for _,side in {-1,1} do
+		local angle=math.rad(-side*36)
+		p("ForroDoTelhado",V(11.6,0.65,18.6),V(side*4.55,14.6,0),darkWood,Enum.Material.Wood,nil,CFrame.Angles(0,0,angle),true)
+		for row=0,4 do for column=0,6 do
+			local along=(row-2)*2.1
+			local roofCf=cf*CFrame.new(V(side*4.55,14.95,0)*scale)*CFrame.Angles(0,0,angle)*CFrame.new(along*scale,0,(column-3)*2.65*scale)
+			Art.Part(m,"TelhaAzul",V(2.24,0.28,2.72)*scale,roofCf,C(41+row*3,77+column%3*6,119+row*4),Enum.Material.Slate)
+		end end
+	end
+	p("Cumeeira",V(0.75,0.7,19.3),V(0,18,0),blue,Enum.Material.Slate)
+	-- Frontão e vigas sob o telhado.
+	for _,side in {-1,1} do
+		p("VigaInclinada",V(0.7,11.2,0.8),V(side*4.55,14.8,7.9),wood,Enum.Material.Wood,nil,CFrame.Angles(0,0,math.rad(side*54)))
+	end
+	for _,z in {-7.5,7.5} do
+		for y=12,17 do
+			p("Frontao",V((18-y)*2/0.727-0.9,1.05,0.6),V(0,y,z),C(222,201,154),Enum.Material.Plaster)
+		end
+	end
+	p("PilarFrontao",V(0.6,6.1,0.8),V(0,14.7,7.8),wood,Enum.Material.Wood)
+	-- Porta, moldura, tábuas e degraus.
+	p("ArcoDaPorta",V(4.8,7,0.7),V(0,5,7.85),darkWood,Enum.Material.Wood)
+	for i=0,5 do p("TabuaDaPorta",V(0.61,6.2,0.3),V(-1.55+i*0.62,4.65,8.3),C(130+i%2*8,85,48),Enum.Material.WoodPlanks) end
+	for _,y in {3.2,6} do p("Ferragem",V(3.7,0.22,0.12),V(0,y,8.5),C(55,62,65),Enum.Material.Metal) end
+	p("Macaneta",V(0.35,0.35,0.2),V(1.1,4.6,8.6),gold,Enum.Material.Metal,"Ball")
+	for i=1,3 do p("Degrau",V(5.6,0.4*i,1.3),V(0,0.2*i,12-i*1.15),C(148,145,126),Enum.Material.Cobblestone,nil,nil,true) end
+	for _,x in {-5.6,5.6} do
+		p("Moldura",V(3.3,4.3,0.6),V(x,5.1,7.9),darkWood,Enum.Material.Wood)
+		p("Vidro",V(2.5,3.5,0.1),V(x,5.1,8.25),C(245,186,87),Enum.Material.Neon)
+		p("Caixilho",V(0.18,3.6,0.25),V(x,5.1,8.4),wood,Enum.Material.Wood)
+		p("Caixilho",V(2.6,0.18,0.25),V(x,5.1,8.4),wood,Enum.Material.Wood)
+		for _,side in {-1,1} do p("Veneziana",V(0.7,3.8,0.3),V(x+side*1.8,5.1,8.4),blue,Enum.Material.WoodPlanks) end
+		p("Floreira",V(3.5,0.7,1),V(x,2.8,8.3),wood,Enum.Material.WoodPlanks)
+		for k=1,5 do p("FloresDaJanela",V(0.6,0.6,0.6),V(x-1.3+k*0.43,3.35,8.4),k%2==0 and C(236,167,120) or C(244,217,136),Enum.Material.SmoothPlastic,"Ball") end
+	end
+	p("Chamine",V(2.6,8,2.6),V(5,16,-3),C(125,121,108),Enum.Material.Brick,nil,nil,true)
+	p("BocaChamine",V(3.3,0.6,3.3),V(5,20,-3),C(80,85,80),Enum.Material.Cobblestone)
+	Art.Lantern(m,cf*CFrame.new(V(3,7.5,9)*scale))
+	return m
+end
+
+function Art.Fence(parent,a,b)
+	local m=Art.Model(parent,"CercaRustica")
+	local count=math.max(1,math.ceil((b-a).Magnitude/8))
+	for i=0,count do
+		local pos=a:Lerp(b,i/count)
+		Art.Part(m,"Mourao",V(0.65,3.7,0.7),pos+V(0,1.6,0),wood,Enum.Material.Wood,nil,true)
+		Art.Part(m,"Topo",V(0.82,0.35,0.85),pos+V(0,3.5,0),darkWood,Enum.Material.Wood)
+	end
+	for _,y in {1,2.5} do Art.Beam(m,"Travessa",a+V(0,y,0),b+V(0,y,0),0.45,wood,Enum.Material.Wood) end
+	return m
+end
+
+function Art.Barrel(parent,cf)
+	local m=Art.Model(parent,"Barril")
+	Art.Part(m,"Madeira",V(2.6,2,2),cf*CFrame.Angles(0,0,math.pi/2),wood,Enum.Material.WoodPlanks,"Cylinder",true)
+	for _,y in {-0.85,0.85} do Art.Part(m,"Aro",V(0.16,2.08,2.08),cf*CFrame.new(0,y,0)*CFrame.Angles(0,0,math.pi/2),C(71,78,75),Enum.Material.Metal,"Cylinder") end
+	return m
+end
+
+function Art.Flower(parent,position,seed)
+	local m=Art.Model(parent,"FloresDoPrado")
+	local r=Random.new(seed)
+	local col=seed%3==0 and C(143,169,217) or C(243,221,155)
+	for i=1,3 do
+		local pos=position+V(r:NextNumber(-1,1),0,r:NextNumber(-1,1))
+		local height=r:NextNumber(0.65,1.2)
+		Art.Beam(m,"Haste",pos,pos+V(0,height,0),0.08,C(69,111,50),Enum.Material.Grass)
+		for k=1,4 do
+			local angle=k*math.pi/2
+			oval(m,"Petala",pos+V(math.cos(angle)*0.16,height,math.sin(angle)*0.16),V(0.3,0.12,0.3),col)
+		end
+		oval(m,"Miolo",pos+V(0,height+0.05,0),V(0.15,0.15,0.15),gold)
+	end
+	return m
+end
+
+function Art.Trainer(parent,position)
+	local m=Art.Model(parent,"InstrutorAldric")
+	local cf=CFrame.new(position)*CFrame.Angles(0,math.rad(-15),0)
+	local function p(n,size,pos,col,mat,shape) return Art.Part(m,n,size,cf*CFrame.new(pos),col,mat,shape) end
+	p("Perna",V(0.8,2,0.9),V(-0.5,1.1,0),C(49,53,59))
+	p("Perna",V(0.8,2,0.9),V(0.5,1.1,0),C(49,53,59))
+	for _,x in {-0.5,0.5} do p("Bota",V(0.9,0.7,1.2),V(x,0.35,0.15),darkWood) end
+	local body=p("Torso",V(2,2.2,1),V(0,3.1,0),blue,Enum.Material.Fabric)
+	p("Peitoral",V(1.7,1.3,0.2),V(0,3.4,0.58),C(163,177,183),Enum.Material.Metal)
+	p("Cinto",V(2.1,0.3,1.1),V(0,2.4,0),darkWood,Enum.Material.Fabric)
+	p("Fivela",V(0.4,0.4,0.15),V(0,2.4,0.62),gold,Enum.Material.Metal)
+	for _,side in {-1,1} do
+		p("Braco",V(0.7,1.9,0.8),V(side*1.35,3,0),blue,Enum.Material.Fabric)
+		p("Ombreira",V(1.1,0.9,1.2),V(side*1.3,3.9,0),C(156,170,177),Enum.Material.Metal,"Ball")
+		p("Luva",V(0.7,0.7,0.8),V(side*1.35,2.1,0),darkWood,Enum.Material.Fabric)
+	end
+	local head=p("Head",V(1.6,1.6,1.5),V(0,5,0),C(224,172,126))
+	local mesh=Instance.new("SpecialMesh"); mesh.MeshType=Enum.MeshType.Head; mesh.Scale=V(1,1,1); mesh.Parent=head
+	p("Cabelo",V(1.7,0.65,1.65),V(0,5.7,-0.05),C(79,59,43),nil,"Ball")
+	for _,x in {-0.32,0.32} do p("Olho",V(0.13,0.18,0.09),V(x,5.05,0.73),C(33,36,34),nil,"Ball") end
+	p("Bigode",V(0.7,0.16,0.12),V(0,4.68,0.75),C(86,63,43),nil,"Ball")
+	p("Capa",V(2.1,2.8,0.2),V(0,2.8,-0.7),blue,Enum.Material.Fabric)
+	return m,body
+end
+
+function Art.Dummy(parent,position)
+	local m=Art.Model(parent,"BonecoDeTreino")
+	Art.Beam(m,"Poste",position,position+V(0,5.6,0),0.7,wood,Enum.Material.Wood,true)
+	Art.Beam(m,"Bracos",position+V(-2.5,3.8,0),position+V(2.5,3.8,0),0.55,wood,Enum.Material.Wood,true)
+	local body=Art.Part(m,"Alvo",V(1.3,2.8,2.8),CFrame.new(position+V(0,3.5,0.25))*CFrame.Angles(0,math.pi/2,0),C(190,153,90),Enum.Material.Fabric,"Cylinder")
+	Art.Part(m,"Circulo",V(0.1,1.8,1.8),CFrame.new(position+V(0,3.5,0.95))*CFrame.Angles(0,math.pi/2,0),C(151,65,49),Enum.Material.Fabric,"Cylinder")
+	Art.Part(m,"Centro",V(0.13,0.75,0.75),CFrame.new(position+V(0,3.5,1.02))*CFrame.Angles(0,math.pi/2,0),C(239,204,137),Enum.Material.Fabric,"Cylinder")
+	oval(m,"CabecaDePalha",position+V(0,5.5,0),V(1.5,1.4,1.3),C(190,153,90),Enum.Material.Fabric)
+	return m,body
+end
+
+return Art
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX3">
+        <Properties>
+          <string name="Name">WorldBuilder</string>
+          <ProtectedString name="Source"><![CDATA[local Art = require(script.Parent.Art)
+local Config = require(script.Parent.Config)
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local Terrain = workspace.Terrain
+local V, C = Vector3.new, Color3.fromRGB
+local World = { Origin=V(Config.TestArenaCenter.X,0,Config.TestArenaCenter.Z), Version=2 }
+local function smooth(a,b,t)
+	t=math.clamp((t-a)/(b-a),0,1)
+	return t*t*(3-2*t)
+end
+local function roadX(z) return 5+10*math.sin(-z/45) end
+local function riverX(z) return 77+10*math.sin(z/33) end
+
+function World.Height(x,z)
+	local noise=math.noise(x/58,z/58,17)*5 + math.noise(x/22,z/22,8)*1.6
+	local village=1-smooth(29,53,math.max(math.abs(x+10)*0.7,math.abs(z-5)))
+	local hill=27*math.exp(-((x+102)^2/2100+(z+110)^2/2300))
+	local mountain=40*math.exp(-((x-12)^2/5200+(z+207)^2/1200))
+	local height=6+noise*(1-village)+hill+mountain+smooth(18,65,-z)*2.8
+	local clearing=(1-smooth(12,26,math.abs(x-10)))*(1-smooth(9,25,math.abs(z+167)))
+	height=height*(1-clearing)+16*clearing
+	local coast=math.sqrt((x/169)^2+((z+65)/206)^2)
+	height-=smooth(0.78,1.05,coast)*39
+	if z>-146 and z<70 then
+		local river=1-smooth(4,10,math.abs(x-riverX(z)))
+		height=height*(1-river)+1.4*river
+	end
+	return height
+end
+local groundFilter=RaycastParams.new()
+groundFilter.FilterType=Enum.RaycastFilterType.Include
+groundFilter.FilterDescendantsInstances={Terrain}
+groundFilter.IgnoreWater=true
+function World.Point(x,z,offset)
+	local hit=workspace:Raycast(World.Origin+V(x,110,z),V(0,-180,0),groundFilter)
+	local height=hit and hit.Position.Y or World.Height(x,z)
+	return World.Origin+V(x,height+(offset or 0),z)
+end
+
+local function createTerrain()
+	local region=Region3.new(World.Origin+V(-192,-32,-272),World.Origin+V(192,96,144)):ExpandToGrid(4)
+	local size=region.Size/4
+	local materials,occupancy={},{}
+	for ix=1,size.X do
+		materials[ix]={}; occupancy[ix]={}
+		for iy=1,size.Y do materials[ix][iy]={}; occupancy[ix][iy]={} end
+		local x=-192+(ix-0.5)*4
+		for iz=1,size.Z do
+			local z=-272+(iz-0.5)*4
+			local h=World.Height(x,z)
+			local road=math.abs(x-roadX(z))<6.3+math.noise(z/12,3)*1.7 and z<25 and z>-164
+			local plaza=((x+7)/22)^2+((z-9)/24)^2<1
+			local housePath=x>-49 and x<5 and math.abs(z+13)<5
+			local surface=(road or plaza or housePath) and Enum.Material.Ground or Enum.Material.Grass
+			local edge=math.abs(World.Height(x+2,z)-h)+math.abs(World.Height(x,z+2)-h)
+			if edge>4.5 or h>29 then surface=Enum.Material.Rock end
+			if h<3 then surface=Enum.Material.Sand end
+			local water=(math.abs(x-riverX(z))<9 and z>-146 and z<70) and 3.4 or -3
+			for iy=1,size.Y do
+				local bottom=-32+(iy-1)*4
+				local filled=math.clamp((h-bottom)/4,0,1)
+				local mat=filled>0 and (bottom>h-7 and surface or Enum.Material.Rock) or Enum.Material.Air
+				if filled==0 and bottom<water then filled=math.clamp((water-bottom)/4,0,1); mat=Enum.Material.Water end
+				materials[ix][iy][iz]=mat; occupancy[ix][iy][iz]=filled
+			end
+		end
+		if ix%12==0 then task.wait() end
+	end
+	Terrain:WriteVoxels(region,4,materials,occupancy)
+	Terrain:SetMaterialColor(Enum.Material.Grass,C(91,133,58))
+	Terrain:SetMaterialColor(Enum.Material.Ground,C(157,126,85))
+	Terrain:SetMaterialColor(Enum.Material.Rock,C(109,118,114))
+	Terrain:SetMaterialColor(Enum.Material.Sand,C(198,181,137))
+	Terrain.WaterColor=C(48,123,136); Terrain.WaterTransparency=0.35; Terrain.WaterReflectance=0.25
+	Terrain.WaterWaveSize=0.12; Terrain.WaterWaveSpeed=8
+	-- Decoration é configurada no arquivo .rbxlx, pois não é scriptável.
+end
+
+function World.Lighting()
+	Lighting.ClockTime=15.2; Lighting.Brightness=2.6; Lighting.GlobalShadows=true
+	Lighting.Ambient=C(93,104,120); Lighting.OutdoorAmbient=C(124,141,157)
+	Lighting.EnvironmentDiffuseScale=0.65; Lighting.EnvironmentSpecularScale=0.5; Lighting.ExposureCompensation=0.05
+	local atmosphere=Lighting:FindFirstChild("AuroraAtmosphere") or Instance.new("Atmosphere")
+	atmosphere.Name="AuroraAtmosphere"; atmosphere.Density=0.25; atmosphere.Offset=0.12
+	atmosphere.Color=C(213,227,235); atmosphere.Decay=C(151,177,192); atmosphere.Glare=0.1; atmosphere.Haze=1.5; atmosphere.Parent=Lighting
+	local grade=Lighting:FindFirstChild("AuroraColor") or Instance.new("ColorCorrectionEffect")
+	grade.Name="AuroraColor"; grade.Saturation=0.08; grade.Contrast=0.1; grade.Brightness=0.01; grade.TintColor=C(255,246,229); grade.Parent=Lighting
+	local bloom=Lighting:FindFirstChild("AuroraBloom") or Instance.new("BloomEffect")
+	bloom.Name="AuroraBloom"; bloom.Intensity=0.12; bloom.Size=18; bloom.Threshold=1.5; bloom.Parent=Lighting
+	local clouds=Terrain:FindFirstChild("AuroraClouds") or Instance.new("Clouds")
+	clouds.Name="AuroraClouds"; clouds.Cover=0.35; clouds.Density=0.45; clouds.Color=C(253,249,236); clouds.Parent=Terrain
+end
+
+local function caption(part,text,color,offset)
+	local gui=Instance.new("BillboardGui")
+	gui.Name="Nameplate"; gui.Size=UDim2.fromOffset(180,52); gui.StudsOffsetWorldSpace=V(0,offset,0)
+	gui.MaxDistance=36; gui.AlwaysOnTop=true; gui.Adornee=part; gui.Parent=part
+	local label=Instance.new("TextLabel")
+	label.Size=UDim2.fromScale(1,1); label.BackgroundTransparency=1; label.Font=Enum.Font.GothamBold
+	label.TextSize=15; label.Text=text; label.TextColor3=color; label.TextStrokeTransparency=0.35; label.Parent=gui
+end
+local function prompt(part,name,action,object,key)
+	local p=Instance.new("ProximityPrompt")
+	p.Name=name; p.ActionText=action; p.ObjectText=object; p.KeyboardKeyCode=key
+	p.MaxActivationDistance=9; p.HoldDuration=0; p.RequiresLineOfSight=false; p.Parent=part
+end
+local function cave(parent)
+	local m=Art.Model(parent,"GrutaDosCristais")
+	local entrance=World.Point(10,-169)
+	for depth=0,30,3 do Terrain:FillBall(entrance+V(0,6,-depth),9,Enum.Material.Air) end
+	Terrain:FillBlock(CFrame.new(entrance+V(0,-1,-13)),V(18,2,38),Enum.Material.Rock)
+	for i=0,8 do
+		local angle=i*math.pi/8
+		Art.Rock(m,entrance+V(math.cos(angle)*11,math.sin(angle)*12+0.5,2),1.5,70+i)
+	end
+	for _,entry in {{-7,1,-4},{7,0,-9},{-5,0,-20},{6,0,-27}} do
+		local pos=entrance+V(entry[1],entry[2],entry[3])
+		for k=1,3 do
+			local crystal=Art.Part(m,"Cristal",V(1.1,3.4+k,1.2),CFrame.new(pos+V((k-2)*0.9,1.4,0))*CFrame.Angles(0,0,math.rad((k-2)*21)),C(94,192,212),Enum.Material.Neon,"Wedge")
+			if k==2 then local l=Instance.new("PointLight"); l.Color=C(82,182,224); l.Brightness=1; l.Range=17; l.Parent=crystal end
+		end
+	end
+end
+
+function World.Build()
+	local existing=workspace:FindFirstChild("AuroraWorld")
+	if existing then return existing end -- preserva edições manuais.
+	createTerrain(); World.Lighting()
+	local world=Art.Model(workspace,"AuroraWorld")
+	world:SetAttribute("ArtVersion",World.Version); world:SetAttribute("Origin",World.Origin)
+	local village=Art.Model(world,"VilaDaAurora")
+	local vegetation=Art.Model(world,"Vegetacao")
+	local rocks=Art.Model(world,"Rochas")
+	local props=Art.Model(world,"Aderecos")
+	local actors=Art.Model(world,"Personagens")
+	local markers=Instance.new("Folder"); markers.Name="Marcadores"; markers.Parent=world
+	Art.Cottage(village,World.Point(-32,-11),78,1.05,"PousadaDaAurora")
+	Art.Cottage(village,World.Point(-38,-44),63,0.83,"CasaDoFerreiro")
+	Art.Cottage(village,World.Point(39,14),-83,0.8,"CasaDoInstrutor")
+	for i,entry in {{-60,12,1.4},{-66,-34,1.5},{-64,-76,1.7},{-48,-109,1.4},{-27,-132,1.2},{48,-36,1.6},{51,-82,1.5},{55,-124,1.1},{99,-65,1.3},{100,-116,1.6},{-92,-140,1.5},{-108,-63,1.3},{38,46,1.5},{-45,43,1.3},{-94,8,1.2},{111,12,1.4},{-64,-158,1.2},{-35,-197,1.1},{70,-179,1.2}} do
+		Art.Tree(vegetation,World.Point(entry[1],entry[2]),entry[3],i*87)
+	end
+	for i,entry in {{-15,-46,1.1},{31,-59,1.5},{-29,-80,1.4},{36,-104,1.2},{-47,-126,2},{42,-144,1.8},{-65,-99,2},{83,-30,0.9},{-16,33,0.8},{23,31,0.7}} do
+		Art.Rock(rocks,World.Point(entry[1],entry[2]),entry[3],i*41)
+	end
+	Art.Fence(props,World.Point(-18,-29),World.Point(-20,-55))
+	Art.Fence(props,World.Point(28,-30),World.Point(33,-53))
+	Art.Fence(props,World.Point(-25,24),World.Point(-48,25))
+	for _,entry in {{-14,-9},{22,-27},{-4,-61}} do
+		local pos=World.Point(entry[1],entry[2])
+		Art.Beam(props,"PosteDeLanterna",pos,pos+V(0,8,0),0.6,C(91,61,39),Enum.Material.Wood,true)
+		Art.Beam(props,"Suporte",pos+V(0,8,0),pos+V(1.9,8,0),0.4,C(91,61,39),Enum.Material.Wood)
+		Art.Lantern(props,CFrame.new(pos+V(1.8,6.8,0)))
+	end
+	for _,entry in {{-20,-4},{-22,-6},{-26,-28},{28,7}} do Art.Barrel(props,CFrame.new(World.Point(entry[1],entry[2],1.3))) end
+	local well=Art.Model(props,"PocoDaVila")
+	local wellPos=World.Point(-29,15)
+	for i=1,12 do
+		local angle=i*math.pi/6
+		Art.Part(well,"Pedra",V(1.8,2,1.2),CFrame.new(wellPos+V(math.sin(angle)*2.8,1,math.cos(angle)*2.8))*CFrame.Angles(0,angle,0),C(138+i%3*7,142+i%3*6,128),Enum.Material.Cobblestone,nil,true)
+	end
+	for _,x in {-3.4,3.4} do Art.Beam(well,"Suporte",wellPos+V(x,0,0),wellPos+V(x,7,0),0.65,C(99,67,42),Enum.Material.Wood,true) end
+	Art.Beam(well,"Eixo",wellPos+V(-3.5,5,0),wellPos+V(3.5,5,0),0.35,C(99,67,42),Enum.Material.Wood,true)
+	local rand=Random.new(4102)
+	for i=1,90 do
+		local x,z=rand:NextNumber(-60,60),rand:NextNumber(-148,35)
+		if math.abs(x-roadX(z))>9 and not (x< -16 and z> -62) and not (x>24 and z> -14) then Art.Flower(vegetation,World.Point(x,z,0.15),i*73) end
+	end
+	for i=1,46 do
+		local z=rand:NextNumber(-143,24)
+		local x=roadX(z)+(i%2==0 and 1 or -1)*rand:NextNumber(6,8.5)
+		Art.Part(props,"Seixo",V(rand:NextNumber(0.3,0.9),0.25,rand:NextNumber(0.3,0.7)),World.Point(x,z,0.15),C(162,155,128),Enum.Material.Rock,"Ball")
+	end
+	cave(world)
+	local _,trainer=Art.Trainer(actors,World.Point(-9,-3))
+	caption(trainer,"!\nAldric · Instrutor",C(255,217,125),4.2)
+	prompt(trainer,"Conversar","Conversar","Aldric, instrutor da Aurora",Enum.KeyCode.E)
+	local _,dummy=Art.Dummy(actors,World.Point(8,-16))
+	caption(dummy,"Treinamento",C(241,222,175),3.5)
+	prompt(dummy,"AtacarBoneco","Atacar","Boneco de treino",Enum.KeyCode.F)
+	local spawn=Instance.new("SpawnLocation")
+	spawn.Name="AuroraSpawn"; spawn.Size=V(5,0.5,5); spawn.CFrame=CFrame.new(World.Point(-4,13,0.2))
+	spawn.Anchored=true; spawn.CanCollide=false; spawn.Transparency=1; spawn.Neutral=true; spawn.Duration=0; spawn.Parent=markers
+	for i,entry in {{10,-62},{-4,-86},{19,-107}} do
+		local mark=Art.Part(markers,"SlimeSpawn"..i,V(1,1,1),World.Point(entry[1],entry[2],2),C(95,210,99))
+		mark.Transparency=1; mark.CanQuery=false; mark.CanTouch=false
+	end
+	world:SetAttribute("Ready",true)
+	if not RunService:IsRunning() and workspace.CurrentCamera then
+		local target=World.Point(1,-70,7)
+		workspace.CurrentCamera.Focus=CFrame.new(target)
+		workspace.CurrentCamera.CFrame=CFrame.lookAt(World.Point(4,34,12),target)
+	end
+	print("Aurora: mapa construído. Salve o lugar para manter terreno e modelos editáveis.")
+	return world
+end
+return World
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX4">
+        <Properties>
+          <string name="Name">PaladinVisual</string>
+          <ProtectedString name="Source"><![CDATA[local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local V, C = Vector3.new, Color3.fromRGB
+local Visual = {}
+local silver, gold, blue = C(159,177,188), C(212,167,78), C(39,83,137)
+
+local function piece(folder, name, size, color, material, anchor, offset, shape, motor)
+	if not anchor then return nil end
+	local p = Instance.new(shape == "Wedge" and "WedgePart" or "Part")
+	p.Name = name
+	p.Size = size
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.CanCollide = false
+	p.CanTouch = false
+	p.CanQuery = false
+	p.Massless = true
+	p.CFrame = anchor.CFrame * offset
+	if shape == "Ball" then p.Shape = Enum.PartType.Ball end
+	if shape == "Cylinder" then p.Shape = Enum.PartType.Cylinder end
+	p.Parent = folder
+	local joint = Instance.new(motor and "Motor6D" or "Weld")
+	joint.Name = motor and "WeaponGrip" or "AttachmentWeld"
+	joint.Part0 = anchor
+	joint.Part1 = p
+	joint.C0 = offset
+	joint.Parent = p
+	return p, joint
+end
+
+function Visual.Equip(character)
+	if character:FindFirstChild("AuroraEquipment") then return end
+	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
+	local right = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	local left = character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm")
+	if not torso or not right or not left then return end
+	local f = Instance.new("Folder")
+	f.Name = "AuroraEquipment"
+	f.Parent = character
+	for i=0,3 do
+		piece(f,"Capa"..i,V(2.05+i*0.13,0.85,0.12),blue,Enum.Material.Fabric,torso,
+			CFrame.new(0,-0.45-i*0.67,0.63+i*0.12)*CFrame.Angles(math.rad(-9),0,0))
+	end
+	for _,side in {-1,1} do
+		local shoulder=piece(f,"Ombreira",V(1,0.72,1.15),silver,Enum.Material.Metal,torso,CFrame.new(side*1.15,0.5,0),"Ball")
+		piece(f,"BordaDourada",V(1.05,0.18,1.2),gold,Enum.Material.Metal,shoulder,CFrame.new(0,-0.17,0),"Ball")
+	end
+	piece(f,"EmblemaVertical",V(0.19,1.15,0.08),gold,Enum.Material.Metal,torso,CFrame.new(0,-1.1,0.96))
+	piece(f,"EmblemaHorizontal",V(0.78,0.19,0.08),gold,Enum.Material.Metal,torso,CFrame.new(0,-0.83,0.91))
+	local shield=piece(f,"Escudo",V(1.95,2.4,0.32),silver,Enum.Material.Metal,left,CFrame.new(-0.28,-0.55,0.35),"Ball")
+	piece(f,"EscudoAzul",V(1.64,2.08,0.2),blue,Enum.Material.Metal,shield,CFrame.new(0,0,0.18),"Ball")
+	piece(f,"CruzDoEscudo",V(0.18,1.35,0.14),gold,Enum.Material.Metal,shield,CFrame.new(0,0,0.31))
+	piece(f,"CruzDoEscudo",V(0.83,0.18,0.14),gold,Enum.Material.Metal,shield,CFrame.new(0,0.24,0.31))
+	local handle=piece(f,"CaboDoMartelo",V(2.1,0.23,0.23),C(101,68,42),Enum.Material.Wood,right,
+		CFrame.new(0,-0.65,-0.15)*CFrame.Angles(0,0,math.pi/2),"Cylinder",true)
+	local head=piece(f,"CabeçaDoMartelo",V(0.7,1.45,0.78),silver,Enum.Material.Metal,handle,CFrame.new(-0.87,0,0))
+	for _,side in {-1,1} do
+		piece(f,"FaceDoMartelo",V(0.83,0.16,0.9),gold,Enum.Material.Metal,head,CFrame.new(0,side*0.73,0))
+	end
+	piece(f,"Pomo",V(0.3,0.37,0.37),gold,Enum.Material.Metal,handle,CFrame.new(0.95,0,0),"Ball")
+end
+
+function Visual.Swing(character)
+	local equipment = character and character:FindFirstChild("AuroraEquipment")
+	local handle = equipment and equipment:FindFirstChild("CaboDoMartelo")
+	local grip = handle and handle:FindFirstChild("WeaponGrip")
+	if not grip then return end
+	local original = CFrame.new(0,-0.65,-0.15)*CFrame.Angles(0,0,math.pi/2)
+	local up = original*CFrame.Angles(0,0,math.rad(-105))
+	TweenService:Create(grip,TweenInfo.new(0.09),{C0=up}):Play()
+	task.delay(0.09,function()
+		if not grip.Parent then return end
+		TweenService:Create(grip,TweenInfo.new(0.16,Enum.EasingStyle.Quad,Enum.EasingDirection.In),{C0=original*CFrame.Angles(0,0,0.45)}):Play()
+		task.delay(0.18,function()
+			if grip.Parent then TweenService:Create(grip,TweenInfo.new(0.12),{C0=original}):Play() end
+		end)
+	end)
+end
+
+function Visual.Hit(target, amount)
+	local board = Instance.new("BillboardGui")
+	board.Name = "Impacto"
+	board.Size = UDim2.fromOffset(100,45)
+	board.StudsOffsetWorldSpace = V(0,3,0)
+	board.AlwaysOnTop = true
+	board.Adornee = target
+	board.Parent = target
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.fromScale(1,1)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.GothamBold
+	text.TextSize = 25
+	text.TextColor3 = C(255,223,135)
+	text.TextStrokeTransparency = 0.3
+	text.Text = amount and tostring(amount) or "✓"
+	text.Parent = board
+	TweenService:Create(board,TweenInfo.new(0.7),{StudsOffsetWorldSpace=V(0,5.5,0)}):Play()
+	TweenService:Create(text,TweenInfo.new(0.7),{TextTransparency=1,TextStrokeTransparency=1}):Play()
+	Debris:AddItem(board,0.75)
+	local light = Instance.new("PointLight")
+	light.Color = C(255,214,111)
+	light.Brightness = 2
+	light.Range = 7
+	light.Parent = target
+	TweenService:Create(light,TweenInfo.new(0.2),{Brightness=0}):Play()
+	Debris:AddItem(light,0.25)
+end
+
+return Visual
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX5">
+        <Properties>
+          <string name="Name">DataService</string>
+          <ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+
+local Config = require(script.Parent.Config)
+local storeAvailable, storeOrError = pcall(function()
+	return DataStoreService:GetDataStore(Config.DataStoreName)
+end)
+local store = storeAvailable and storeOrError or nil
+if not store then
+	warn("Aurora: DataStore indisponível; esta sessão não será salva: " .. tostring(storeOrError))
+end
+local sessionId = HttpService:GenerateGUID(false)
+local profiles = {}
+local saving = {}
+
+local DataService = {}
+
+local function fresh(userId)
+	return {
+		UserId = userId,
+		SchemaVersion = Config.SchemaVersion,
+		ClassId = "paladin",
+		Level = 1,
+		XP = 0,
+		Gold = 0,
+		Inventory = { Weapons = { "paladin_basic" }, Armor = { "paladin_basic_armor" }, Potions = 0 },
+		Equipped = { Weapon = "paladin_basic", Armor = "paladin_basic_armor" },
+		QuestState = { Id = "Q01", Spoke = false, DummyHit = false, Kills = 0 },
+		CompletedQuests = {},
+		UnlockedMounts = {},
+		StarterGearGranted = true,
+	}
+end
+
+local function cloneData(value)
+	if type(value) ~= "table" then return value end
+	local copy = {}
+	for key, child in pairs(value) do
+		copy[key] = cloneData(child)
+	end
+	return copy
+end
+
+local function safeProfile(raw, userId)
+	local base = fresh(userId)
+	if type(raw) ~= "table" then
+		return base
+	end
+	base.ClassId = raw.ClassId == "paladin" and raw.ClassId or base.ClassId
+	base.Level = type(raw.Level) == "number" and math.clamp(math.floor(raw.Level), 1, Config.MaxLevel) or base.Level
+	base.XP = type(raw.XP) == "number" and math.max(0, math.floor(raw.XP)) or base.XP
+	if base.Level == Config.MaxLevel then base.XP = 0 end
+	base.Gold = type(raw.Gold) == "number" and math.max(0, math.floor(raw.Gold)) or base.Gold
+	base.Inventory = type(raw.Inventory) == "table" and raw.Inventory or base.Inventory
+	base.Equipped = type(raw.Equipped) == "table" and raw.Equipped or base.Equipped
+	base.QuestState = type(raw.QuestState) == "table" and raw.QuestState or base.QuestState
+	base.CompletedQuests = type(raw.CompletedQuests) == "table" and raw.CompletedQuests or base.CompletedQuests
+	base.UnlockedMounts = type(raw.UnlockedMounts) == "table" and raw.UnlockedMounts or base.UnlockedMounts
+	base.StarterGearGranted = raw.StarterGearGranted == true
+	if type(base.Inventory.Weapons) ~= "table" then base.Inventory.Weapons = { "paladin_basic" } end
+	if type(base.Inventory.Armor) ~= "table" then base.Inventory.Armor = { "paladin_basic_armor" } end
+	if type(base.Equipped.Weapon) ~= "string" then base.Equipped.Weapon = "paladin_basic" end
+	if type(base.Equipped.Armor) ~= "string" then base.Equipped.Armor = "paladin_basic_armor" end
+	if type(base.QuestState.Id) ~= "string" then base.QuestState = { Id = "Q01", Spoke = false, DummyHit = false, Kills = 0 } end
+	return base
+end
+
+function DataService.Load(player)
+	if not store then
+		profiles[player] = { Data = fresh(player.UserId), ReadOnly = true }
+		return profiles[player]
+	end
+	local key = "User_" .. player.UserId
+	local lockConflict = false
+	local incompatible = false
+	local success, stored
+	for attempt = 1, 3 do
+		lockConflict = false
+		incompatible = false
+		success, stored = pcall(function()
+			return store:UpdateAsync(key, function(current)
+				lockConflict = false
+				incompatible = false
+				if type(current) == "table" then
+					if current.SchemaVersion ~= Config.SchemaVersion or current.UserId ~= player.UserId then
+						incompatible = true
+						return nil
+					end
+					local lock = current.SessionLock
+					if type(lock) == "table" and lock.Id ~= sessionId and type(lock.ExpiresAt) == "number" and lock.ExpiresAt > os.time() then
+						lockConflict = true
+						return nil
+					end
+				end
+				local nextData = safeProfile(current, player.UserId)
+				nextData.SessionLock = { Id = sessionId, ExpiresAt = os.time() + Config.LockSeconds }
+				return nextData
+			end)
+		end)
+		if success then break end
+		if attempt < 3 then task.wait(attempt) end
+	end
+
+	if success and (lockConflict or incompatible) then
+		return nil, incompatible and "Perfil de uma versão mais recente." or "Perfil aberto em outro servidor. Tente novamente em instantes."
+	end
+	if success and type(stored) == "table" then
+		profiles[player] = { Data = safeProfile(stored, player.UserId), ReadOnly = false }
+	else
+		warn("Aurora: falha ao carregar perfil de " .. player.UserId .. ": " .. tostring(stored))
+		profiles[player] = { Data = fresh(player.UserId), ReadOnly = true }
+	end
+	return profiles[player]
+end
+
+function DataService.Get(player)
+	return profiles[player]
+end
+
+function DataService.Save(player, release)
+	local state = profiles[player]
+	if not state or state.ReadOnly or saving[player] then
+		return false
+	end
+	saving[player] = true
+	local snapshot = cloneData(state.Data)
+	local key = "User_" .. player.UserId
+	local owned = false
+	local success, err
+	for attempt = 1, 3 do
+		owned = false
+		success, err = pcall(function()
+			store:UpdateAsync(key, function(current)
+				owned = false
+				if type(current) ~= "table" or type(current.SessionLock) ~= "table" or current.SessionLock.Id ~= sessionId then
+					return nil
+				end
+				owned = true
+				local nextData = cloneData(snapshot)
+				if not release then
+					nextData.SessionLock = { Id = sessionId, ExpiresAt = os.time() + Config.LockSeconds }
+				end
+				return nextData
+			end)
+		end)
+		if success then break end
+		if attempt < 3 then task.wait(attempt) end
+	end
+	saving[player] = nil
+	if not success or not owned then
+		if success and not owned then state.ReadOnly = true end
+		warn("Aurora: falha ao salvar perfil de " .. player.UserId .. ": " .. tostring(err))
+		return false
+	end
+	return true
+end
+
+function DataService.Release(player)
+	while saving[player] do task.wait(0.1) end
+	DataService.Save(player, true)
+	profiles[player] = nil
+end
+
+task.spawn(function()
+	while true do
+		task.wait(Config.SaveInterval)
+		for player in pairs(profiles) do
+			if player.Parent == Players then
+				DataService.Save(player, false)
+			end
+		end
+	end
+end)
+
+game:BindToClose(function()
+	for player in pairs(profiles) do
+		DataService.Save(player, true)
+	end
+end)
+
+return DataService
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX6">
+        <Properties>
+          <string name="Name">QuestService</string>
+          <ProtectedString name="Source"><![CDATA[local Config = require(script.Parent.Config)
+local DataService = require(script.Parent.DataService)
+
+local QuestService = {}
+QuestService.Changed = Instance.new("BindableEvent")
+
+local function addXP(data, amount)
+	if data.Level >= Config.MaxLevel then
+		return
+	end
+	data.XP += amount
+	while data.Level < Config.MaxLevel and data.XP >= Config.XPToNextLevel(data.Level) do
+		data.XP -= Config.XPToNextLevel(data.Level)
+		data.Level += 1
+	end
+	if data.Level == Config.MaxLevel then
+		data.XP = 0
+	end
+end
+
+function QuestService.Trainer(player)
+	local state = DataService.Get(player)
+	if not state then return end
+	local data = state.Data
+	local quest = data.QuestState
+	if quest.Id == "Q01" then
+		if not quest.Spoke then
+			quest.Spoke = true
+		elseif quest.DummyHit and not data.CompletedQuests.Q01 then
+			data.CompletedQuests.Q01 = true
+			data.Gold += 10
+			addXP(data, 40)
+			data.QuestState = { Id = "Q02", Kills = 0 }
+		end
+	elseif quest.Id == "Q02" and quest.Kills >= 3 and not data.CompletedQuests.Q02 then
+		data.CompletedQuests.Q02 = true
+		data.Gold += 20
+		addXP(data, 100)
+		table.insert(data.Inventory.Weapons, "paladin_rare")
+		data.Equipped.Weapon = "paladin_rare"
+		data.QuestState = { Id = "DONE" }
+	end
+	QuestService.Changed:Fire(player)
+end
+
+function QuestService.HitDummy(player)
+	local state = DataService.Get(player)
+	if not state then return end
+	local quest = state.Data.QuestState
+	if quest.Id == "Q01" and quest.Spoke then
+		quest.DummyHit = true
+		QuestService.Changed:Fire(player)
+	end
+end
+
+function QuestService.KilledSlime(player)
+	local state = DataService.Get(player)
+	if not state then return end
+	local data = state.Data
+	addXP(data, Config.Slime.XP)
+	local quest = data.QuestState
+	if quest.Id == "Q02" then
+		quest.Kills = math.min(3, (quest.Kills or 0) + 1)
+	end
+	QuestService.Changed:Fire(player)
+end
+
+function QuestService.View(player)
+	local state = DataService.Get(player)
+	if not state then return nil end
+	local data = state.Data
+	local quest = data.QuestState
+	local description
+	if quest.Id == "Q01" then
+		if not quest.Spoke then
+			description = "Converse com Aldric, o instrutor da vila. Pressione E de perto."
+		elseif not quest.DummyHit then
+			description = "Acerte o boneco de treino. Clique nele ou pressione F de perto."
+		else
+			description = "Volte a Aldric e pressione E para concluir o treinamento."
+		end
+	elseif quest.Id == "Q02" then
+		if quest.Kills >= 3 then
+			description = "Volte a Aldric e pressione E para receber o martelo."
+		else
+			description = ("Derrote os SLIMES VERDES no campo: %d/3."):format(quest.Kills or 0)
+		end
+	else
+		description = "Treino concluído! Martelo raro recebido."
+	end
+	return {
+		ClassId = data.ClassId,
+		Level = data.Level,
+		XP = data.XP,
+		XPToNext = data.Level < Config.MaxLevel and Config.XPToNextLevel(data.Level) or 0,
+		Gold = data.Gold,
+		Quest = description,
+		QuestId = quest.Id,
+		Weapon = data.Equipped.Weapon,
+		ReadOnly = state.ReadOnly,
+	}
+end
+
+return QuestService
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX7">
+        <Properties>
+          <string name="Name">TestArena</string>
+          <ProtectedString name="Source"><![CDATA[-- Adaptador dos sistemas de jogo para o mapa persistente e editável.
+local WorldBuilder = require(script.Parent.WorldBuilder)
+local TestArena = {}
+
+function TestArena.Create()
+	local world = WorldBuilder.Build()
+	local actors = world:WaitForChild("Personagens")
+	local markers = world:WaitForChild("Marcadores")
+	local trainer = actors.InstrutorAldric.Torso
+	local dummy = actors.BonecoDeTreino.Alvo
+	local enemies = Instance.new("Folder")
+	enemies.Name = "AuroraEnemies"
+	enemies.Parent = workspace
+	local positions = {}
+	for _, marker in markers:GetChildren() do
+		if marker.Name:match("^SlimeSpawn") then table.insert(positions, marker.Position) end
+	end
+	return {
+		Arena = world, Spawn = markers.AuroraSpawn, TrainerPrompt = trainer.Conversar,
+		Dummy = dummy, DummyPrompt = dummy.AtacarBoneco, Enemies = enemies, SlimePositions = positions,
+	}
+end
+
+return TestArena
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="RBX8">
+        <Properties>
+          <string name="Name">EnemyService</string>
+          <ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Config = require(script.Parent.Config)
+local QuestService = require(script.Parent.QuestService)
+local PaladinVisual = require(script.Parent.PaladinVisual)
+
+local EnemyService = {}
+local slimes = {}
+local attackTimes = {}
+local groundFilter = RaycastParams.new()
+groundFilter.FilterType = Enum.RaycastFilterType.Include
+groundFilter.FilterDescendantsInstances = { workspace.Terrain }
+
+local function rootOf(player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and humanoid.Health > 0 and root then return root, humanoid end
+	return nil, nil
+end
+
+local function inSafeZone(position)
+	return (Vector3.new(position.X, 0, position.Z) - Vector3.new(Config.TestArenaCenter.X, 0, Config.TestArenaCenter.Z)).Magnitude < Config.SafeRadius
+end
+
+local function createSlime(folder, position, index)
+	local model = Instance.new("Model")
+	model.Name = "Slime" .. index
+	model:SetAttribute("EnemyType", "slime")
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(4.6, 3.5, 4.3)
+	body.Anchored = true
+	body.CanCollide = false
+	body.Material = Enum.Material.SmoothPlastic
+	body.Color = Color3.fromRGB(118, 201, 73)
+	body.Reflectance = 0.08
+	body.Position = position
+	body.Parent = model
+	local eyes = {}
+	for _, side in { -1, 1 } do
+		local eye = Instance.new("Part")
+		eye.Name = "Olho"
+		eye.Shape = Enum.PartType.Ball
+		eye.Size = Vector3.new(0.5, 0.7, 0.35)
+		eye.Anchored = true
+		eye.CanCollide = false
+		eye.Color = Color3.fromRGB(19, 44, 28)
+		eye.Position = position + Vector3.new(side * 0.73, 0.15, 1.94)
+		eye.Parent = model
+		table.insert(eyes, eye)
+	end
+	for index, data in {
+		{ "Boca", Vector3.new(0.45,0.16,0.18), Vector3.new(0,-0.45,2.05), Color3.fromRGB(45,84,34) },
+		{ "Brilho", Vector3.new(0.65,0.28,0.12), Vector3.new(-0.95,0.95,1.65), Color3.fromRGB(215,245,169) },
+		{ "Broto", Vector3.new(0.45,1.05,0.65), Vector3.new(0.2,1.85,0), Color3.fromRGB(72,142,45) },
+	} do
+		local feature = Instance.new("Part")
+		feature.Name = data[1]
+		feature.Shape = Enum.PartType.Ball
+		feature.Size = data[2]
+		feature.Position = position + data[3]
+		feature.Color = data[4]
+		feature.Anchored = true
+		feature.CanCollide = false
+		feature.Parent = model
+		table.insert(eyes, feature)
+	end
+	local board = Instance.new("BillboardGui")
+	board.Name = "Nameplate"
+	board.Adornee = body
+	board.AlwaysOnTop = true
+	board.MaxDistance = 34
+	board.Size = UDim2.fromOffset(125, 35)
+	board.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+	board.Parent = body
+	local text = Instance.new("TextLabel")
+	text.Name = "HealthText"
+	text.Size = UDim2.fromScale(1, 1)
+	text.BackgroundColor3 = Color3.fromRGB(20, 40, 25)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.GothamBold
+	text.TextColor3 = Color3.fromRGB(172, 255, 176)
+	text.TextSize = 14
+	text.TextStrokeTransparency = 0.3
+	text.Text = ("Slime · Nv.1  %d/%d"):format(Config.Slime.MaxHealth, Config.Slime.MaxHealth)
+	text.Parent = board
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = text
+	model.PrimaryPart = body
+	model.Parent = folder
+	model:SetAttribute("Health", Config.Slime.MaxHealth)
+	return { Model = model, Body = body, Eyes = eyes, Nameplate = board, HealthText = text, Home = position, Health = Config.Slime.MaxHealth, Dead = false, Hits = {}, LastAttack = 0, Phase = index*2, Heading = 0 }
+end
+
+local function updateHealth(slime)
+	slime.HealthText.Text = ("Slime · Nv.1  %d/%d"):format(slime.Health, Config.Slime.MaxHealth)
+end
+
+local function moveSlime(slime, position)
+	local delta = position - slime.Body.Position
+	if Vector3.new(delta.X,0,delta.Z).Magnitude > 0.05 then
+		slime.Heading = math.atan2(delta.X,delta.Z)
+	end
+	local hit = workspace:Raycast(Vector3.new(position.X,100,position.Z),Vector3.new(0,-160,0),groundFilter)
+	local floor = hit and hit.Position.Y or (slime.Home.Y - 2)
+	local bounce = math.abs(math.sin(os.clock()*3.8 + slime.Phase))
+	local pivot = CFrame.new(position.X,floor+1.75+bounce*0.45,position.Z)*CFrame.Angles(0,slime.Heading,0)
+	slime.Model:PivotTo(pivot)
+	slime.Body.Size = Vector3.new(4.6+(1-bounce)*0.2,3.35+bounce*0.3,4.3+(1-bounce)*0.2)
+end
+
+function EnemyService.Start(folder, positions)
+	for index, position in positions do
+		table.insert(slimes, createSlime(folder, position, index))
+	end
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator < 0.1 then return end
+		local step = math.min(accumulator, 0.2)
+		accumulator = 0
+		for _, slime in slimes do
+			if slime.Dead then continue end
+			local position = slime.Body.Position
+			local nearestPlayer, nearestRoot, nearestHumanoid, nearestDistance
+			for _, player in Players:GetPlayers() do
+				local root, humanoid = rootOf(player)
+				if root and not inSafeZone(root.Position) then
+					local distance = (root.Position - position).Magnitude
+					if distance <= Config.Slime.DetectRange and (not nearestDistance or distance < nearestDistance) then
+						nearestPlayer, nearestRoot, nearestHumanoid, nearestDistance = player, root, humanoid, distance
+					end
+				end
+			end
+			local destination = slime.Home
+			if nearestPlayer and (position - slime.Home).Magnitude <= Config.Slime.LeashRange then
+				destination = Vector3.new(nearestRoot.Position.X, slime.Home.Y, nearestRoot.Position.Z)
+				if nearestDistance <= Config.Slime.AttackRange and os.clock() - slime.LastAttack >= Config.Slime.AttackCooldown then
+					slime.LastAttack = os.clock()
+					nearestHumanoid:TakeDamage(Config.Slime.Damage)
+				end
+			else
+				slime.Health = Config.Slime.MaxHealth
+				slime.Model:SetAttribute("Health", slime.Health)
+				updateHealth(slime)
+				slime.Hits = {}
+			end
+			local offset = destination - position
+			if offset.Magnitude > 0.2 then
+				local nextPosition = position + offset.Unit * math.min(offset.Magnitude, Config.Slime.Speed * step)
+				moveSlime(slime, nextPosition)
+			else
+				moveSlime(slime, position)
+			end
+		end
+	end)
+end
+
+function EnemyService.Attack(player, target, dummy)
+	local root = rootOf(player)
+	if not root then return end
+	local now = os.clock()
+	if now - (attackTimes[player] or 0) < Config.Paladin.AttackCooldown then return end
+	if typeof(target) ~= "Instance" then return end
+	if target == dummy or target:IsDescendantOf(dummy.Parent) then
+		if (root.Position - dummy.Position).Magnitude > Config.Paladin.AttackRange then return end
+		attackTimes[player] = now
+		PaladinVisual.Swing(player.Character)
+		PaladinVisual.Hit(dummy)
+		QuestService.HitDummy(player)
+		return
+	end
+	for _, slime in slimes do
+		if target == slime.Model or target:IsDescendantOf(slime.Model) then
+			if slime.Dead or (root.Position - slime.Body.Position).Magnitude > Config.Paladin.AttackRange then return end
+			attackTimes[player] = now
+			PaladinVisual.Swing(player.Character)
+			PaladinVisual.Hit(slime.Body, Config.Paladin.AttackDamage)
+			slime.Health = math.max(0, slime.Health - Config.Paladin.AttackDamage)
+			slime.Model:SetAttribute("Health", slime.Health)
+			updateHealth(slime)
+			slime.Hits[player] = now
+			if slime.Health == 0 then
+				slime.Dead = true
+				slime.Body.Transparency = 1
+				for _, eye in slime.Eyes do eye.Transparency = 1 end
+				slime.Nameplate.Enabled = false
+				for contributor, hitTime in slime.Hits do
+					local contributorRoot = rootOf(contributor)
+					if contributor.Parent == Players and contributorRoot and now - hitTime <= 30 and (contributorRoot.Position - slime.Body.Position).Magnitude <= 60 then
+						QuestService.KilledSlime(contributor)
+					end
+				end
+				task.delay(Config.Slime.RespawnSeconds, function()
+					if not slime.Model.Parent then return end
+					slime.Health = Config.Slime.MaxHealth
+					slime.Hits = {}
+					moveSlime(slime, slime.Home)
+					slime.Body.Transparency = 0
+					for _, eye in slime.Eyes do eye.Transparency = 0 end
+					slime.Model:SetAttribute("Health", slime.Health)
+					updateHealth(slime)
+					slime.Nameplate.Enabled = true
+					slime.Dead = false
+				end)
+			end
+			return
+		end
+	end
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	attackTimes[player] = nil
+	for _, slime in slimes do slime.Hits[player] = nil end
+end)
+
+return EnemyService
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="RBX9">
+        <Properties>
+          <string name="Name">Client</string>
+          <bool name="Disabled">false</bool>
+          <ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+local remotes = ReplicatedStorage:WaitForChild("AuroraRemotes")
+local attack = remotes:WaitForChild("Attack")
+local stateChanged = remotes:WaitForChild("StateChanged")
+local getState = remotes:WaitForChild("GetState")
+
+local navy = Color3.fromRGB(18, 34, 53)
+local gold = Color3.fromRGB(230, 179, 76)
+local cream = Color3.fromRGB(251, 242, 218)
+local muted = Color3.fromRGB(175, 194, 206)
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AuroraHUD"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
+gui.Parent = player:WaitForChild("PlayerGui")
+pcall(function()
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false)
+	StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Health, false)
+end)
+pcall(function() StarterGui:SetCore("ChatActive", false) end)
+
+local function panel(name, size, position, anchor, parent, color)
+	local item = Instance.new("Frame")
+	item.Name = name
+	item.Size = size
+	item.Position = position
+	item.AnchorPoint = anchor
+	item.BackgroundColor3 = color or navy
+	item.BackgroundTransparency = 0.04
+	item.Parent = parent or gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = item
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = gold
+	stroke.Thickness = 1.5
+	stroke.Transparency = 0.12
+	stroke.Parent = item
+	return item
+end
+
+local function label(parent, name, text, position, size, fontSize, color, bold)
+	local item = Instance.new("TextLabel")
+	item.Name = name
+	item.BackgroundTransparency = 1
+	item.Position = position
+	item.Size = size
+	item.Font = bold and Enum.Font.GothamBold or Enum.Font.Gotham
+	item.Text = text
+	item.TextColor3 = color or cream
+	item.TextSize = fontSize
+	item.TextWrapped = true
+	item.TextXAlignment = Enum.TextXAlignment.Left
+	item.TextYAlignment = Enum.TextYAlignment.Center
+	item.Parent = parent
+	return item
+end
+
+local function bar(parent, name, y, fillColor)
+	local track = Instance.new("Frame")
+	track.Name = name
+	track.Position = UDim2.fromOffset(12, y)
+	track.Size = UDim2.new(1, -24, 0, 11)
+	track.BackgroundColor3 = Color3.fromRGB(7, 16, 25)
+	track.Parent = parent
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 4)
+	corner.Parent = track
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BackgroundColor3 = fillColor
+	fill.Parent = track
+	local fillCorner = Instance.new("UICorner")
+	fillCorner.CornerRadius = UDim.new(0, 4)
+	fillCorner.Parent = fill
+	return fill
+end
+
+local location = panel("Location", UDim2.fromOffset(194, 48), UDim2.new(0.5, 0, 0, 12), Vector2.new(0.5, 0))
+local locationTitle = label(location, "Title", "Prado da Aurora", UDim2.fromOffset(8, 5), UDim2.new(1, -16, 0, 23), 17, gold, true)
+locationTitle.TextXAlignment = Enum.TextXAlignment.Center
+local locationLevel = label(location, "Level", "Área de nível 1–3", UDim2.fromOffset(8, 27), UDim2.new(1, -16, 0, 17), 12, cream)
+locationLevel.TextXAlignment = Enum.TextXAlignment.Center
+
+local map = panel("Minimap", UDim2.fromOffset(138, 138), UDim2.new(1, -15, 0, 12), Vector2.new(1, 0), gui, Color3.fromRGB(54, 112, 69))
+map.ClipsDescendants = true
+map:FindFirstChildOfClass("UICorner").CornerRadius = UDim.new(1, 0)
+local mapGradient = Instance.new("UIGradient")
+mapGradient.Color = ColorSequence.new(Color3.fromRGB(49, 110, 65), Color3.fromRGB(103, 151, 89))
+mapGradient.Rotation = 75
+mapGradient.Parent = map
+
+local function mapDot(name, x, y, diameter, color)
+	local dot = Instance.new("Frame")
+	dot.Name = name
+	dot.AnchorPoint = Vector2.new(0.5, 0.5)
+	dot.Position = UDim2.fromScale(x, y)
+	dot.Size = UDim2.fromOffset(diameter, diameter)
+	dot.BackgroundColor3 = color
+	dot.Parent = map
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(1, 0)
+	round.Parent = dot
+	return dot
+end
+
+local road = Instance.new("Frame")
+road.Name = "Estrada"
+road.AnchorPoint = Vector2.new(0.5, 0.5)
+road.Position = UDim2.fromScale(0.5, 0.47)
+road.Size = UDim2.fromOffset(15, 128)
+road.BackgroundColor3 = Color3.fromRGB(213, 184, 127)
+road.Rotation = 3
+road.Parent = map
+mapDot("Vila", 0.44, 0.83, 16, Color3.fromRGB(244, 181, 84))
+mapDot("Caverna", 0.5, 0.09, 17, Color3.fromRGB(62, 94, 126))
+mapDot("Slime1", 0.48, 0.54, 7, Color3.fromRGB(100, 235, 98))
+mapDot("Slime2", 0.54, 0.46, 7, Color3.fromRGB(100, 235, 98))
+mapDot("Slime3", 0.47, 0.37, 7, Color3.fromRGB(100, 235, 98))
+local playerDot = mapDot("Jogador", 0.47, 0.75, 11, Color3.fromRGB(91, 204, 255))
+local playerStroke = Instance.new("UIStroke")
+playerStroke.Color = Color3.fromRGB(255, 255, 255)
+playerStroke.Thickness = 2
+playerStroke.Parent = playerDot
+local questPanel = panel("Missions", UDim2.fromOffset(234, 158), UDim2.new(1, -15, 0, 177), Vector2.new(1, 0))
+local questHeading = label(questPanel, "Heading", "MISSÕES", UDim2.fromOffset(12, 8), UDim2.new(1, -24, 0, 25), 16, gold, true)
+local questTitle = label(questPanel, "QuestTitle", "PRIMEIROS PASSOS", UDim2.fromOffset(12, 35), UDim2.new(1, -24, 0, 19), 12, cream, true)
+local quest = label(questPanel, "Quest", "Aguarde a missão carregar...", UDim2.fromOffset(12, 57), UDim2.new(1, -24, 0, 59), 15, cream)
+local reward = label(questPanel, "Reward", "Recompensa: EXP e moedas", UDim2.fromOffset(12, 116), UDim2.new(1, -24, 0, 18), 11, gold)
+local saveNote = label(questPanel, "SaveNote", "", UDim2.fromOffset(12, 134), UDim2.new(1, -24, 0, 19), 10, muted)
+
+local status = panel("Status", UDim2.fromOffset(238, 124), UDim2.new(0, 15, 0, 64), Vector2.new(0, 0))
+label(status, "Heading", player.DisplayName, UDim2.fromOffset(12, 5), UDim2.new(1, -24, 0, 24), 17, gold, true)
+local classLine = label(status, "Class", "Paladino  •  Nv.1", UDim2.fromOffset(12, 29), UDim2.new(1, -24, 0, 18), 13, cream)
+local healthText = label(status, "Health", "Vida 100/100", UDim2.fromOffset(12, 48), UDim2.new(1, -24, 0, 16), 12, cream)
+local healthFill = bar(status, "HealthBar", 64, Color3.fromRGB(62, 206, 83))
+local xpText = label(status, "XP", "EXP 0/80", UDim2.fromOffset(12, 79), UDim2.new(1, -24, 0, 16), 12, cream)
+local xpFill = bar(status, "XPBar", 95, Color3.fromRGB(55, 154, 239))
+local weaponText = label(status, "Weapon", "Martelo de treino", UDim2.fromOffset(12, 107), UDim2.new(1, -24, 0, 15), 10, muted)
+
+local goldPanel = panel("Gold", UDim2.fromOffset(132, 29), UDim2.new(0, 15, 1, -11), Vector2.new(0, 1))
+local goldText = label(goldPanel, "Amount", "0 moedas", UDim2.fromOffset(11, 3), UDim2.new(1, -22, 0, 22), 13, gold, true)
+
+local hotbar = panel("Hotbar", UDim2.fromOffset(278, 64), UDim2.new(0.5, 0, 1, -14), Vector2.new(0.5, 1))
+for slot = 1, 5 do
+	local tile = panel("Slot" .. slot, UDim2.fromOffset(47, 48), UDim2.fromOffset(10 + (slot - 1) * 53, 8), Vector2.new(0, 0), hotbar,
+		slot == 1 and Color3.fromRGB(76, 67, 44) or Color3.fromRGB(30, 45, 62))
+	local symbol = slot == 1 and "ATAQUE" or "EM BREVE"
+	local text = label(tile, "Action", slot .. "\n" .. symbol, UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), slot == 1 and 11 or 9,
+		slot == 1 and gold or muted, slot == 1)
+	text.TextXAlignment = Enum.TextXAlignment.Center
+end
+
+local function render(state)
+	if not state then return end
+	classLine.Text = ("Paladino  •  Nv.%d"):format(state.Level)
+	healthText.Text = ("Vida  %d/%d"):format(math.ceil(state.Health), state.MaxHealth)
+	healthFill.Size = UDim2.fromScale(math.clamp(state.Health / math.max(1, state.MaxHealth), 0, 1), 1)
+	xpText.Text = ("EXP  %d/%d"):format(state.XP, state.XPToNext)
+	xpFill.Size = UDim2.fromScale(state.XPToNext > 0 and math.clamp(state.XP / state.XPToNext, 0, 1) or 1, 1)
+	goldText.Text = ("●  %d moedas"):format(state.Gold)
+	weaponText.Text = state.Weapon == "paladin_rare" and "Martelo raro da Aurora" or "Martelo de treino"
+	questTitle.Text = state.QuestId == "Q01" and "Q01  •  TREINAMENTO" or (state.QuestId == "Q02" and "Q02  •  PRIMEIROS PASSOS" or "CONCLUÍDA")
+	quest.Text = state.Quest
+	reward.Text = state.QuestId == "Q01" and "Recompensa: 40 EXP + 10 moedas" or (state.QuestId == "Q02" and "Recompensa: martelo raro" or "Treino completo")
+	saveNote.Text = state.ReadOnly and "Teste local: progresso não será salvo" or "Progresso salvo automaticamente"
+end
+
+stateChanged.OnClientEvent:Connect(render)
+local ok, initial = pcall(function() return getState:InvokeServer() end)
+if ok then render(initial) end
+
+local function requestAttack()
+	local target = mouse.Target
+	if target then attack:FireServer(target) end
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or UserInputService:GetFocusedTextBox() then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.One then
+		requestAttack()
+	end
+end)
+
+local mapElapsed = 0
+RunService.Heartbeat:Connect(function(dt)
+	mapElapsed += dt
+	if mapElapsed < 0.15 then return end
+	mapElapsed = 0
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local arena = workspace:FindFirstChild("AuroraWorld")
+	local origin = arena and arena:GetAttribute("Origin")
+	if not root or not origin then return end
+	local centerX = origin.X
+	local centerZ = origin.Z
+	playerDot.Position = UDim2.fromScale(
+		math.clamp(0.5 + (root.Position.X - centerX) / 200, 0.07, 0.93),
+		math.clamp(0.8 + (root.Position.Z - centerZ) / 235, 0.07, 0.93)
+	)
+end)
+]]></ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="RBX10">
+        <Properties>
+          <string name="Name">Bootstrap</string>
+          <bool name="Disabled">false</bool>
+          <ProtectedString name="Source"><![CDATA[local ServerScriptService = game:GetService("ServerScriptService")
+if script.Parent.Parent ~= ServerScriptService then
+	script.Parent.Parent = ServerScriptService
+end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(script.Parent.Config)
+local DataService = require(script.Parent.DataService)
+local QuestService = require(script.Parent.QuestService)
+local TestArena = require(script.Parent.TestArena)
+local EnemyService = require(script.Parent.EnemyService)
+local PaladinVisual = require(script.Parent.PaladinVisual)
+
+local arena = TestArena.Create()
+EnemyService.Start(arena.Enemies, arena.SlimePositions)
+
+local remotes = ReplicatedStorage:FindFirstChild("AuroraRemotes") or Instance.new("Folder")
+remotes.Name = "AuroraRemotes"
+remotes.Parent = ReplicatedStorage
+
+local attack = remotes:FindFirstChild("Attack") or Instance.new("RemoteEvent")
+attack.Name = "Attack"
+attack.Parent = remotes
+local stateChanged = remotes:FindFirstChild("StateChanged") or Instance.new("RemoteEvent")
+stateChanged.Name = "StateChanged"
+stateChanged.Parent = remotes
+local getState = remotes:FindFirstChild("GetState") or Instance.new("RemoteFunction")
+getState.Name = "GetState"
+getState.Parent = remotes
+
+local function view(player)
+	local state = QuestService.View(player)
+	if not state then return nil end
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	state.Health = humanoid and humanoid.Health or Config.Paladin.MaxHealth
+	state.MaxHealth = humanoid and humanoid.MaxHealth or Config.Paladin.MaxHealth
+	return state
+end
+
+local function send(player)
+	local current = view(player)
+	if not current then return end
+	local equipment = player.Character and player.Character:FindFirstChild("AuroraEquipment")
+	local head = equipment and equipment:FindFirstChild("CabeçaDoMartelo")
+	if head then
+		local rare = current.Weapon == "paladin_rare"
+		head.Color = rare and Color3.fromRGB(255, 205, 84) or Color3.fromRGB(150, 168, 177)
+		head.Material = rare and Enum.Material.Neon or Enum.Material.Metal
+	end
+	stateChanged:FireClient(player, current)
+end
+
+getState.OnServerInvoke = function(player)
+	return view(player)
+end
+
+attack.OnServerEvent:Connect(function(player, target)
+	local state = DataService.Get(player)
+	if not state or state.Data.ClassId ~= "paladin" then return end
+	EnemyService.Attack(player, target, arena.Dummy)
+end)
+
+arena.TrainerPrompt.Triggered:Connect(function(player)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root or (root.Position - arena.TrainerPrompt.Parent.Position).Magnitude > 12 then return end
+	QuestService.Trainer(player)
+end)
+
+arena.DummyPrompt.Triggered:Connect(function(player)
+	local state = DataService.Get(player)
+	if not state or state.Data.ClassId ~= "paladin" then return end
+	EnemyService.Attack(player, arena.Dummy, arena.Dummy)
+end)
+
+QuestService.Changed.Event:Connect(send)
+
+local function onCharacter(player, character)
+	local root = character:WaitForChild("HumanoidRootPart", 10)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if not root or not humanoid then return end
+	humanoid.MaxHealth = Config.Paladin.MaxHealth
+	humanoid.Health = humanoid.MaxHealth
+	character:PivotTo(CFrame.new(arena.Spawn.Position + Vector3.new(0, 5, 0)))
+	if player:HasAppearanceLoaded() then PaladinVisual.Equip(character) end
+	humanoid.HealthChanged:Connect(function() send(player) end)
+	send(player)
+end
+
+local function onPlayer(player)
+	local state, problem = DataService.Load(player)
+	if not state then
+		player:Kick(problem or "Não foi possível abrir o perfil. Tente novamente.")
+		return
+	end
+	local client = script.Parent:FindFirstChild("Client")
+	local playerGui = player:WaitForChild("PlayerGui", 10)
+	if client and playerGui and not playerGui:FindFirstChild("AuroraClientHost") then
+		local host = Instance.new("ScreenGui")
+		host.Name = "AuroraClientHost"
+		host.ResetOnSpawn = false
+		local copy = client:Clone()
+		copy.Name = "AuroraClient"
+		copy.Parent = host
+		host.Parent = playerGui
+	end
+	player.CharacterAppearanceLoaded:Connect(function(character)
+		PaladinVisual.Equip(character)
+		send(player)
+	end)
+	player.CharacterAdded:Connect(function(character) onCharacter(player, character) end)
+	if player.Character then onCharacter(player, player.Character) end
+	send(player)
+end
+
+Players.PlayerAdded:Connect(onPlayer)
+Players.PlayerRemoving:Connect(function(player)
+	DataService.Release(player)
+end)
+for _, player in Players:GetPlayers() do
+	task.spawn(onPlayer, player)
+end
+]]></ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Lighting" referent="SERVICE_Lighting">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <bool name="GlobalShadows">true</bool>
+      <float name="Brightness">2.6</float>
+      <float name="ClockTime">15.2</float>
+      <token name="Technology">4</token>
+    </Properties>
+  </Item>
+  <Item class="StarterPlayer" referent="SERVICE_StarterPlayer">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+      <float name="CameraMinZoomDistance">7</float>
+      <float name="CameraMaxZoomDistance">22</float>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="SERVICE_ReplicatedStorage">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+  </Item>
+  <Item class="StarterGui" referent="SERVICE_StarterGui">
+    <Properties>
+      <string name="Name">StarterGui</string>
+    </Properties>
+  </Item>
+  <Item class="SoundService" referent="SERVICE_SoundService">
+    <Properties>
+      <string name="Name">SoundService</string>
+    </Properties>
+  </Item>
+</roblox>
