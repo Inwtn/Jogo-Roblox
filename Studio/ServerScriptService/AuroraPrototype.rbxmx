@@ -1,0 +1,753 @@
+<?xml version="1.0" encoding="utf-8"?>
+<roblox version="4" xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd">
+  <External>null</External>
+  <External>nil</External>
+  <Item class="Folder" referent="RBX0">
+    <Properties>
+      <string name="Name">AuroraPrototype</string>
+    </Properties>
+    <Item class="ModuleScript" referent="RBX1">
+      <Properties>
+        <string name="Name">Config</string>
+        <ProtectedString name="Source"><![CDATA[local Config = {}
+
+Config.SchemaVersion = 1
+Config.DataStoreName = "AuroraProfiles_Dev_v1"
+Config.MaxLevel = 10
+Config.SaveInterval = 60
+Config.LockSeconds = 180
+Config.TestArenaCenter = Vector3.new(600, 8, 0)
+Config.SafeRadius = 17
+
+Config.Paladin = {
+	MaxHealth = 100,
+	AttackDamage = 18,
+	AttackRange = 11,
+	AttackCooldown = 0.65,
+}
+
+Config.Slime = {
+	MaxHealth = 35,
+	Damage = 8,
+	XP = 10,
+	DetectRange = 36,
+	LeashRange = 38,
+	AttackRange = 5,
+	Speed = 7,
+	AttackCooldown = 1.6,
+	RespawnSeconds = 6,
+}
+
+function Config.XPToNextLevel(level)
+	return 60 + 20 * level
+end
+
+return Config
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX2">
+      <Properties>
+        <string name="Name">DataService</string>
+        <ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local DataStoreService = game:GetService("DataStoreService")
+local HttpService = game:GetService("HttpService")
+
+local Config = require(script.Parent.Config)
+local store = DataStoreService:GetDataStore(Config.DataStoreName)
+local sessionId = HttpService:GenerateGUID(false)
+local profiles = {}
+local saving = {}
+
+local DataService = {}
+
+local function fresh(userId)
+	return {
+		UserId = userId,
+		SchemaVersion = Config.SchemaVersion,
+		ClassId = "paladin",
+		Level = 1,
+		XP = 0,
+		Gold = 0,
+		Inventory = { Weapons = { "paladin_basic" }, Armor = { "paladin_basic_armor" }, Potions = 0 },
+		Equipped = { Weapon = "paladin_basic", Armor = "paladin_basic_armor" },
+		QuestState = { Id = "Q01", Spoke = false, DummyHit = false, Kills = 0 },
+		CompletedQuests = {},
+		UnlockedMounts = {},
+		StarterGearGranted = true,
+	}
+end
+
+local function cloneData(value)
+	if type(value) ~= "table" then return value end
+	local copy = {}
+	for key, child in pairs(value) do
+		copy[key] = cloneData(child)
+	end
+	return copy
+end
+
+local function safeProfile(raw, userId)
+	local base = fresh(userId)
+	if type(raw) ~= "table" then
+		return base
+	end
+	base.ClassId = raw.ClassId == "paladin" and raw.ClassId or base.ClassId
+	base.Level = type(raw.Level) == "number" and math.clamp(math.floor(raw.Level), 1, Config.MaxLevel) or base.Level
+	base.XP = type(raw.XP) == "number" and math.max(0, math.floor(raw.XP)) or base.XP
+	if base.Level == Config.MaxLevel then base.XP = 0 end
+	base.Gold = type(raw.Gold) == "number" and math.max(0, math.floor(raw.Gold)) or base.Gold
+	base.Inventory = type(raw.Inventory) == "table" and raw.Inventory or base.Inventory
+	base.Equipped = type(raw.Equipped) == "table" and raw.Equipped or base.Equipped
+	base.QuestState = type(raw.QuestState) == "table" and raw.QuestState or base.QuestState
+	base.CompletedQuests = type(raw.CompletedQuests) == "table" and raw.CompletedQuests or base.CompletedQuests
+	base.UnlockedMounts = type(raw.UnlockedMounts) == "table" and raw.UnlockedMounts or base.UnlockedMounts
+	base.StarterGearGranted = raw.StarterGearGranted == true
+	if type(base.Inventory.Weapons) ~= "table" then base.Inventory.Weapons = { "paladin_basic" } end
+	if type(base.Inventory.Armor) ~= "table" then base.Inventory.Armor = { "paladin_basic_armor" } end
+	if type(base.Equipped.Weapon) ~= "string" then base.Equipped.Weapon = "paladin_basic" end
+	if type(base.Equipped.Armor) ~= "string" then base.Equipped.Armor = "paladin_basic_armor" end
+	if type(base.QuestState.Id) ~= "string" then base.QuestState = { Id = "Q01", Spoke = false, DummyHit = false, Kills = 0 } end
+	return base
+end
+
+function DataService.Load(player)
+	local key = "User_" .. player.UserId
+	local lockConflict = false
+	local incompatible = false
+	local success, stored
+	for attempt = 1, 3 do
+		lockConflict = false
+		incompatible = false
+		success, stored = pcall(function()
+			return store:UpdateAsync(key, function(current)
+				lockConflict = false
+				incompatible = false
+				if type(current) == "table" then
+					if current.SchemaVersion ~= Config.SchemaVersion or current.UserId ~= player.UserId then
+						incompatible = true
+						return nil
+					end
+					local lock = current.SessionLock
+					if type(lock) == "table" and lock.Id ~= sessionId and type(lock.ExpiresAt) == "number" and lock.ExpiresAt > os.time() then
+						lockConflict = true
+						return nil
+					end
+				end
+				local nextData = safeProfile(current, player.UserId)
+				nextData.SessionLock = { Id = sessionId, ExpiresAt = os.time() + Config.LockSeconds }
+				return nextData
+			end)
+		end)
+		if success then break end
+		if attempt < 3 then task.wait(attempt) end
+	end
+
+	if success and (lockConflict or incompatible) then
+		return nil, incompatible and "Perfil de uma versão mais recente." or "Perfil aberto em outro servidor. Tente novamente em instantes."
+	end
+	if success and type(stored) == "table" then
+		profiles[player] = { Data = safeProfile(stored, player.UserId), ReadOnly = false }
+	else
+		warn("Aurora: falha ao carregar perfil de " .. player.UserId .. ": " .. tostring(stored))
+		profiles[player] = { Data = fresh(player.UserId), ReadOnly = true }
+	end
+	return profiles[player]
+end
+
+function DataService.Get(player)
+	return profiles[player]
+end
+
+function DataService.Save(player, release)
+	local state = profiles[player]
+	if not state or state.ReadOnly or saving[player] then
+		return false
+	end
+	saving[player] = true
+	local snapshot = cloneData(state.Data)
+	local key = "User_" .. player.UserId
+	local owned = false
+	local success, err
+	for attempt = 1, 3 do
+		owned = false
+		success, err = pcall(function()
+			store:UpdateAsync(key, function(current)
+				owned = false
+				if type(current) ~= "table" or type(current.SessionLock) ~= "table" or current.SessionLock.Id ~= sessionId then
+					return nil
+				end
+				owned = true
+				local nextData = cloneData(snapshot)
+				if not release then
+					nextData.SessionLock = { Id = sessionId, ExpiresAt = os.time() + Config.LockSeconds }
+				end
+				return nextData
+			end)
+		end)
+		if success then break end
+		if attempt < 3 then task.wait(attempt) end
+	end
+	saving[player] = nil
+	if not success or not owned then
+		if success and not owned then state.ReadOnly = true end
+		warn("Aurora: falha ao salvar perfil de " .. player.UserId .. ": " .. tostring(err))
+		return false
+	end
+	return true
+end
+
+function DataService.Release(player)
+	while saving[player] do task.wait(0.1) end
+	DataService.Save(player, true)
+	profiles[player] = nil
+end
+
+task.spawn(function()
+	while true do
+		task.wait(Config.SaveInterval)
+		for player in pairs(profiles) do
+			if player.Parent == Players then
+				DataService.Save(player, false)
+			end
+		end
+	end
+end)
+
+game:BindToClose(function()
+	for player in pairs(profiles) do
+		DataService.Save(player, true)
+	end
+end)
+
+return DataService
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX3">
+      <Properties>
+        <string name="Name">QuestService</string>
+        <ProtectedString name="Source"><![CDATA[local Config = require(script.Parent.Config)
+local DataService = require(script.Parent.DataService)
+
+local QuestService = {}
+QuestService.Changed = Instance.new("BindableEvent")
+
+local function addXP(data, amount)
+	if data.Level >= Config.MaxLevel then
+		return
+	end
+	data.XP += amount
+	while data.Level < Config.MaxLevel and data.XP >= Config.XPToNextLevel(data.Level) do
+		data.XP -= Config.XPToNextLevel(data.Level)
+		data.Level += 1
+	end
+	if data.Level == Config.MaxLevel then
+		data.XP = 0
+	end
+end
+
+function QuestService.Trainer(player)
+	local state = DataService.Get(player)
+	if not state then return end
+	local data = state.Data
+	local quest = data.QuestState
+	if quest.Id == "Q01" then
+		if not quest.Spoke then
+			quest.Spoke = true
+		elseif quest.DummyHit and not data.CompletedQuests.Q01 then
+			data.CompletedQuests.Q01 = true
+			data.Gold += 10
+			addXP(data, 40)
+			data.QuestState = { Id = "Q02", Kills = 0 }
+		end
+	elseif quest.Id == "Q02" and quest.Kills >= 3 and not data.CompletedQuests.Q02 then
+		data.CompletedQuests.Q02 = true
+		data.Gold += 20
+		addXP(data, 100)
+		table.insert(data.Inventory.Weapons, "paladin_rare")
+		data.Equipped.Weapon = "paladin_rare"
+		data.QuestState = { Id = "DONE" }
+	end
+	QuestService.Changed:Fire(player)
+end
+
+function QuestService.HitDummy(player)
+	local state = DataService.Get(player)
+	if not state then return end
+	local quest = state.Data.QuestState
+	if quest.Id == "Q01" and quest.Spoke then
+		quest.DummyHit = true
+		QuestService.Changed:Fire(player)
+	end
+end
+
+function QuestService.KilledSlime(player)
+	local state = DataService.Get(player)
+	if not state then return end
+	local data = state.Data
+	addXP(data, Config.Slime.XP)
+	local quest = data.QuestState
+	if quest.Id == "Q02" then
+		quest.Kills = math.min(3, (quest.Kills or 0) + 1)
+	end
+	QuestService.Changed:Fire(player)
+end
+
+function QuestService.View(player)
+	local state = DataService.Get(player)
+	if not state then return nil end
+	local data = state.Data
+	local quest = data.QuestState
+	local description
+	if quest.Id == "Q01" then
+		if not quest.Spoke then
+			description = "Q01: fale com o instrutor (E)"
+		elseif not quest.DummyHit then
+			description = "Q01: acerte o boneco de treino (clique ou 1)"
+		else
+			description = "Q01: volte ao instrutor"
+		end
+	elseif quest.Id == "Q02" then
+		if quest.Kills >= 3 then
+			description = "Q02: volte ao instrutor para receber o martelo raro"
+		else
+			description = ("Q02: derrote slimes (%d/3)"):format(quest.Kills or 0)
+		end
+	else
+		description = "Primeira sequência concluída!"
+	end
+	return {
+		ClassId = data.ClassId,
+		Level = data.Level,
+		XP = data.XP,
+		XPToNext = data.Level < Config.MaxLevel and Config.XPToNextLevel(data.Level) or 0,
+		Gold = data.Gold,
+		Quest = description,
+		QuestId = quest.Id,
+		Weapon = data.Equipped.Weapon,
+		ReadOnly = state.ReadOnly,
+	}
+end
+
+return QuestService
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX4">
+      <Properties>
+        <string name="Name">TestArena</string>
+        <ProtectedString name="Source"><![CDATA[local Config = require(script.Parent.Config)
+
+local TestArena = {}
+
+local function part(parent, name, size, position, color, material)
+	local item = Instance.new("Part")
+	item.Name = name
+	item.Anchored = true
+	item.Size = size
+	item.Position = position
+	item.Color = color
+	item.Material = material or Enum.Material.SmoothPlastic
+	item.Parent = parent
+	return item
+end
+
+function TestArena.Create()
+	local old = workspace:FindFirstChild("AuroraTestArena")
+	if old then error("AuroraTestArena já existe. Remova a cópia duplicada de AuroraPrototype.") end
+	local center = Config.TestArenaCenter
+	local arena = Instance.new("Folder")
+	arena.Name = "AuroraTestArena"
+	arena.Parent = workspace
+
+	part(arena, "Solo", Vector3.new(150, 2, 100), center + Vector3.new(20, -4, 0), Color3.fromRGB(91, 150, 87), Enum.Material.Grass)
+	part(arena, "VilaSegura", Vector3.new(28, 0.4, 28), center + Vector3.new(0, -2.8, 0), Color3.fromRGB(213, 193, 136), Enum.Material.Sand)
+	part(arena, "Caminho", Vector3.new(72, 0.3, 8), center + Vector3.new(36, -2.7, 0), Color3.fromRGB(188, 171, 139), Enum.Material.Sand)
+
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = "AuroraSpawn"
+	spawn.Anchored = true
+	spawn.Neutral = true
+	spawn.Size = Vector3.new(6, 1, 6)
+	spawn.Position = center + Vector3.new(-5, -2.2, 0)
+	spawn.Color = Color3.fromRGB(240, 215, 122)
+	spawn.Parent = arena
+
+	local trainer = part(arena, "Instrutor", Vector3.new(3, 7, 3), center + Vector3.new(7, 1, 6), Color3.fromRGB(47, 92, 154))
+	local trainerPrompt = Instance.new("ProximityPrompt")
+	trainerPrompt.Name = "Conversar"
+	trainerPrompt.ActionText = "Conversar"
+	trainerPrompt.ObjectText = "Instrutor da Aurora"
+	trainerPrompt.MaxActivationDistance = 10
+	trainerPrompt.HoldDuration = 0
+	trainerPrompt.Parent = trainer
+
+	local dummy = part(arena, "BonecoDeTreino", Vector3.new(3, 6, 2), center + Vector3.new(12, 0, -7), Color3.fromRGB(140, 93, 51), Enum.Material.Wood)
+	local sign = part(arena, "PlacaVila", Vector3.new(1, 7, 6), center + Vector3.new(14, 1, 12), Color3.fromRGB(130, 91, 63), Enum.Material.Wood)
+	sign.CanCollide = false
+
+	local enemies = Instance.new("Folder")
+	enemies.Name = "AuroraEnemies"
+	enemies.Parent = workspace
+
+	return {
+		Arena = arena,
+		Spawn = spawn,
+		TrainerPrompt = trainerPrompt,
+		Dummy = dummy,
+		Enemies = enemies,
+		SlimePositions = {
+			center + Vector3.new(38, 0, -11),
+			center + Vector3.new(48, 0, 10),
+			center + Vector3.new(59, 0, -5),
+		},
+	}
+end
+
+return TestArena
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX5">
+      <Properties>
+        <string name="Name">EnemyService</string>
+        <ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Config = require(script.Parent.Config)
+local QuestService = require(script.Parent.QuestService)
+
+local EnemyService = {}
+local slimes = {}
+local attackTimes = {}
+
+local function rootOf(player)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if humanoid and humanoid.Health > 0 and root then return root, humanoid end
+	return nil, nil
+end
+
+local function inSafeZone(position)
+	return (Vector3.new(position.X, 0, position.Z) - Vector3.new(Config.TestArenaCenter.X, 0, Config.TestArenaCenter.Z)).Magnitude < Config.SafeRadius
+end
+
+local function createSlime(folder, position, index)
+	local model = Instance.new("Model")
+	model.Name = "Slime" .. index
+	model:SetAttribute("EnemyType", "slime")
+	local body = Instance.new("Part")
+	body.Name = "Body"
+	body.Shape = Enum.PartType.Ball
+	body.Size = Vector3.new(5, 4, 5)
+	body.Anchored = true
+	body.CanCollide = false
+	body.Material = Enum.Material.Neon
+	body.Color = Color3.fromRGB(78, 205, 103)
+	body.Position = position
+	body.Parent = model
+	model.PrimaryPart = body
+	model.Parent = folder
+	model:SetAttribute("Health", Config.Slime.MaxHealth)
+	return { Model = model, Body = body, Home = position, Health = Config.Slime.MaxHealth, Dead = false, Hits = {}, LastAttack = 0 }
+end
+
+function EnemyService.Start(folder, positions)
+	for index, position in positions do
+		table.insert(slimes, createSlime(folder, position, index))
+	end
+	local accumulator = 0
+	RunService.Heartbeat:Connect(function(dt)
+		accumulator += dt
+		if accumulator < 0.1 then return end
+		local step = math.min(accumulator, 0.2)
+		accumulator = 0
+		for _, slime in slimes do
+			if slime.Dead then continue end
+			local position = slime.Body.Position
+			local nearestPlayer, nearestRoot, nearestHumanoid, nearestDistance
+			for _, player in Players:GetPlayers() do
+				local root, humanoid = rootOf(player)
+				if root and not inSafeZone(root.Position) then
+					local distance = (root.Position - position).Magnitude
+					if distance <= Config.Slime.DetectRange and (not nearestDistance or distance < nearestDistance) then
+						nearestPlayer, nearestRoot, nearestHumanoid, nearestDistance = player, root, humanoid, distance
+					end
+				end
+			end
+			local destination = slime.Home
+			if nearestPlayer and (position - slime.Home).Magnitude <= Config.Slime.LeashRange then
+				destination = Vector3.new(nearestRoot.Position.X, slime.Home.Y, nearestRoot.Position.Z)
+				if nearestDistance <= Config.Slime.AttackRange and os.clock() - slime.LastAttack >= Config.Slime.AttackCooldown then
+					slime.LastAttack = os.clock()
+					nearestHumanoid:TakeDamage(Config.Slime.Damage)
+				end
+			else
+				slime.Health = Config.Slime.MaxHealth
+				slime.Model:SetAttribute("Health", slime.Health)
+				slime.Hits = {}
+			end
+			local offset = destination - position
+			if offset.Magnitude > 0.2 then
+				local nextPosition = position + offset.Unit * math.min(offset.Magnitude, Config.Slime.Speed * step)
+				slime.Body.Position = nextPosition
+			end
+		end
+	end)
+end
+
+function EnemyService.Attack(player, target, dummy)
+	local root = rootOf(player)
+	if not root then return end
+	local now = os.clock()
+	if now - (attackTimes[player] or 0) < Config.Paladin.AttackCooldown then return end
+	if typeof(target) ~= "Instance" then return end
+	if target == dummy then
+		if (root.Position - dummy.Position).Magnitude > Config.Paladin.AttackRange then return end
+		attackTimes[player] = now
+		QuestService.HitDummy(player)
+		return
+	end
+	for _, slime in slimes do
+		if target == slime.Model or target:IsDescendantOf(slime.Model) then
+			if slime.Dead or (root.Position - slime.Body.Position).Magnitude > Config.Paladin.AttackRange then return end
+			attackTimes[player] = now
+			slime.Health = math.max(0, slime.Health - Config.Paladin.AttackDamage)
+			slime.Model:SetAttribute("Health", slime.Health)
+			slime.Hits[player] = now
+			if slime.Health == 0 then
+				slime.Dead = true
+				slime.Body.Transparency = 1
+				for contributor, hitTime in slime.Hits do
+					local contributorRoot = rootOf(contributor)
+					if contributor.Parent == Players and contributorRoot and now - hitTime <= 30 and (contributorRoot.Position - slime.Body.Position).Magnitude <= 60 then
+						QuestService.KilledSlime(contributor)
+					end
+				end
+				task.delay(Config.Slime.RespawnSeconds, function()
+					if not slime.Model.Parent then return end
+					slime.Health = Config.Slime.MaxHealth
+					slime.Hits = {}
+					slime.Body.Position = slime.Home
+					slime.Body.Transparency = 0
+					slime.Model:SetAttribute("Health", slime.Health)
+					slime.Dead = false
+				end)
+			end
+			return
+		end
+	end
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	attackTimes[player] = nil
+	for _, slime in slimes do slime.Hits[player] = nil end
+end)
+
+return EnemyService
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="LocalScript" referent="RBX6">
+      <Properties>
+        <string name="Name">Client</string>
+        <bool name="Disabled">false</bool>
+        <ProtectedString name="Source"><![CDATA[local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
+local remotes = ReplicatedStorage:WaitForChild("AuroraRemotes")
+local attack = remotes:WaitForChild("Attack")
+local stateChanged = remotes:WaitForChild("StateChanged")
+local getState = remotes:WaitForChild("GetState")
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AuroraHUD"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local panel = Instance.new("Frame")
+panel.Name = "Status"
+panel.Size = UDim2.fromOffset(430, 146)
+panel.Position = UDim2.fromOffset(16, 16)
+panel.BackgroundColor3 = Color3.fromRGB(25, 31, 38)
+panel.BackgroundTransparency = 0.08
+panel.Parent = gui
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = panel
+
+local function label(name, y, height, size, color)
+	local item = Instance.new("TextLabel")
+	item.Name = name
+	item.BackgroundTransparency = 1
+	item.Position = UDim2.fromOffset(12, y)
+	item.Size = UDim2.new(1, -24, 0, height)
+	item.Font = Enum.Font.Gotham
+	item.TextColor3 = color or Color3.fromRGB(245, 245, 245)
+	item.TextSize = size
+	item.TextXAlignment = Enum.TextXAlignment.Left
+	item.TextWrapped = true
+	item.Parent = panel
+	return item
+end
+
+local title = label("Title", 8, 25, 19)
+local stats = label("Stats", 36, 24, 15)
+local quest = label("Quest", 63, 46, 16, Color3.fromRGB(252, 226, 125))
+local note = label("Note", 111, 27, 13, Color3.fromRGB(196, 214, 222))
+title.Text = "ILHA DA AURORA | Protótipo"
+stats.Text = "Carregando..."
+quest.Text = ""
+note.Text = "Clique ou 1: ataque | E: converse com o instrutor"
+
+local function render(state)
+	if not state then return end
+	stats.Text = ("Paladino  Nv.%d  Vida %d/%d  EXP %d/%d  Moedas %d"):format(
+		state.Level, math.ceil(state.Health), state.MaxHealth, state.XP, state.XPToNext, state.Gold
+	)
+	quest.Text = state.Quest
+	if state.ReadOnly then
+		note.Text = "Sem acesso ao DataStore: progresso desta sessão não será salvo."
+	elseif state.QuestId == "DONE" then
+		note.Text = "Martelo raro recebido. Salve e reconecte para testar o perfil."
+	else
+		note.Text = "Clique ou 1: ataque | E: converse com o instrutor | Arma: " .. state.Weapon
+	end
+end
+
+stateChanged.OnClientEvent:Connect(render)
+local ok, initial = pcall(function() return getState:InvokeServer() end)
+if ok then render(initial) end
+
+local function requestAttack()
+	local target = mouse.Target
+	if target then attack:FireServer(target) end
+end
+
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or UserInputService:GetFocusedTextBox() then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.One then
+		requestAttack()
+	end
+end)
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="RBX7">
+      <Properties>
+        <string name="Name">Bootstrap</string>
+        <bool name="Disabled">false</bool>
+        <ProtectedString name="Source"><![CDATA[local ServerScriptService = game:GetService("ServerScriptService")
+if script.Parent.Parent ~= ServerScriptService then
+	script.Parent.Parent = ServerScriptService
+end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(script.Parent.Config)
+local DataService = require(script.Parent.DataService)
+local QuestService = require(script.Parent.QuestService)
+local TestArena = require(script.Parent.TestArena)
+local EnemyService = require(script.Parent.EnemyService)
+
+local arena = TestArena.Create()
+EnemyService.Start(arena.Enemies, arena.SlimePositions)
+
+local remotes = ReplicatedStorage:FindFirstChild("AuroraRemotes") or Instance.new("Folder")
+remotes.Name = "AuroraRemotes"
+remotes.Parent = ReplicatedStorage
+
+local attack = remotes:FindFirstChild("Attack") or Instance.new("RemoteEvent")
+attack.Name = "Attack"
+attack.Parent = remotes
+local stateChanged = remotes:FindFirstChild("StateChanged") or Instance.new("RemoteEvent")
+stateChanged.Name = "StateChanged"
+stateChanged.Parent = remotes
+local getState = remotes:FindFirstChild("GetState") or Instance.new("RemoteFunction")
+getState.Name = "GetState"
+getState.Parent = remotes
+
+local function view(player)
+	local state = QuestService.View(player)
+	if not state then return nil end
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	state.Health = humanoid and humanoid.Health or Config.Paladin.MaxHealth
+	state.MaxHealth = humanoid and humanoid.MaxHealth or Config.Paladin.MaxHealth
+	return state
+end
+
+local function send(player)
+	local current = view(player)
+	if current then stateChanged:FireClient(player, current) end
+end
+
+getState.OnServerInvoke = function(player)
+	return view(player)
+end
+
+attack.OnServerEvent:Connect(function(player, target)
+	local state = DataService.Get(player)
+	if not state or state.Data.ClassId ~= "paladin" then return end
+	EnemyService.Attack(player, target, arena.Dummy)
+end)
+
+arena.TrainerPrompt.Triggered:Connect(function(player)
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root or (root.Position - arena.TrainerPrompt.Parent.Position).Magnitude > 12 then return end
+	QuestService.Trainer(player)
+end)
+
+QuestService.Changed.Event:Connect(send)
+
+local function onCharacter(player, character)
+	local root = character:WaitForChild("HumanoidRootPart", 10)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if not root or not humanoid then return end
+	humanoid.MaxHealth = Config.Paladin.MaxHealth
+	humanoid.Health = humanoid.MaxHealth
+	character:PivotTo(CFrame.new(arena.Spawn.Position + Vector3.new(0, 5, 0)))
+	humanoid.HealthChanged:Connect(function() send(player) end)
+	send(player)
+end
+
+local function onPlayer(player)
+	local state, problem = DataService.Load(player)
+	if not state then
+		player:Kick(problem or "Não foi possível abrir o perfil. Tente novamente.")
+		return
+	end
+	local client = script.Parent:FindFirstChild("Client")
+	local playerGui = player:WaitForChild("PlayerGui", 10)
+	if client and playerGui and not playerGui:FindFirstChild("AuroraClientHost") then
+		local host = Instance.new("ScreenGui")
+		host.Name = "AuroraClientHost"
+		host.ResetOnSpawn = false
+		local copy = client:Clone()
+		copy.Name = "AuroraClient"
+		copy.Parent = host
+		host.Parent = playerGui
+	end
+	player.CharacterAdded:Connect(function(character) onCharacter(player, character) end)
+	if player.Character then onCharacter(player, player.Character) end
+	send(player)
+end
+
+Players.PlayerAdded:Connect(onPlayer)
+Players.PlayerRemoving:Connect(function(player)
+	DataService.Release(player)
+end)
+for _, player in Players:GetPlayers() do
+	task.spawn(onPlayer, player)
+end
+]]></ProtectedString>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>
