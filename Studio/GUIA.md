@@ -1,39 +1,74 @@
-# Jogar e instalar a primeira versão no Roblox Studio
+﻿# Abrir e editar a Ilha da Aurora
 
-## Testar o jogo que já está aberto
+## Arquivo para usar agora
 
-O arquivo `C:\Users\isaac\OneDrive\Documentos\Jogo Roblox\MeuJogoRoblox.rbxl.rbxl` já contém `ServerScriptService > AuroraPrototype` atualizado. Abra esse arquivo e clique em **Play**. A arena aparece somente durante a partida; no modo de edição, a baseplate vazia é normal.
+`C:\Users\isaac\OneDrive\Documentos\Jogo Roblox\Studio\IlhaDaAurora.rbxlx`
 
-1. O **instrutor azul** e o **boneco de madeira** ficam à frente do personagem, com nomes sobre eles.
-2. Pressione **E** perto do instrutor azul.
-3. Aproxime-se do boneco de madeira e **clique nele** ou pressione **F** para atacar.
-4. Volte ao instrutor e pressione **E**. Depois derrote **3 slimes verdes** no campo e converse com ele mais uma vez.
+1. No Roblox Studio, abra **Arquivo > Abrir do arquivo**.
+2. Escolha **IlhaDaAurora.rbxlx** dentro da pasta **Studio**.
+3. A vila já aparece no modo de edição. Aperte **Play / F5** para jogar.
 
-O painel **MISSÕES**, à direita, mostra a ação atual. **E** conversa com o instrutor, **F** acerta o boneco de perto, e **clique** ou **1** ataca os slimes. A barra inferior mostra apenas o ataque básico disponível; as outras ações ainda estão em desenvolvimento. Se aparecer “Teste local: progresso não será salvo”, a missão ainda funciona nessa partida, mas reinicia no próximo Play.
+Não é necessário importar os scripts para esse arquivo: eles já estão instalados.
 
-## Arquivo pronto para importar
+## Controles e missão
 
-`C:\Users\isaac\OneDrive\Documentos\Jogo Roblox\Studio\ServerScriptService\AuroraPrototype.rbxmx`
-
-Para usar o pacote em outro lugar, abra esse lugar no Roblox Studio e salve uma cópia para testes.
-
-1. Ative **Explorer**. Clique com o botão direito em **ServerScriptService** e escolha **Insert > Import Roblox Model**.
-2. Selecione o arquivo `.rbxmx` acima. Deve aparecer `ServerScriptService > AuroraPrototype`, contendo `Bootstrap`, `Config`, `DataService`, `EnemyService`, `QuestService`, `TestArena` e `Client`.
-3. Clique em **Play**. Se abrir uma janela chamada **Servidor**, use **Teste > Adicionar clientes** e jogue na janela **Place1**. A câmera da janela Servidor pode continuar apontando para a baseplate: a arena foi criada longe dela. No Explorer do servidor, confira `Workspace > AuroraTestArena` e `Workspace > AuroraEnemies`.
-
-Este pacote contém os scripts necessários para essa primeira sequência. Importe apenas o `.rbxmx`; as outras pastas locais mostram onde os sistemas vão crescer. Ao iniciar o Play, o pacote cria `Workspace > AuroraTestArena`, `Workspace > AuroraEnemies` e `ReplicatedStorage > AuroraRemotes`. Ele também coloca a HUD em `PlayerGui`. Vila, caminho, caverna e vegetação são gerados durante o jogo. Por isso, a baseplate continua vazia no modo de edição.
-
-## Organização das pastas
-
-| Pasta local | Uso |
+| Ação | Controle |
 | --- | --- |
-| `ServerScriptService` | Pacote importável com a lógica do servidor e o script de cliente que será copiado ao jogador. |
-| `Workspace` | Reservada para a ilha editável após revisar o lugar original. A arena atual é provisória. |
-| `ReplicatedStorage` | Reservada para configurações compartilhadas e remotes permanentes; `AuroraRemotes` é criado pelo servidor nesta etapa. |
-| `ServerStorage` | Reservada para modelos futuros de inimigos, equipamentos e montaria. |
-| `StarterGui` | Reservada para a HUD final; a HUD provisória é criada pelo cliente. |
-| `StarterPlayer/StarterPlayerScripts` | Reservada para controles e câmera finais. |
+| Andar | W, A, S, D |
+| Pular | Espaço |
+| Conversar com Aldric | E, perto dele |
+| Acertar o boneco | F, perto dele |
+| Atacar um slime | Clique nele, ou aponte para ele e pressione 1, estando próximo |
+| Parar o teste | Shift + F5 |
 
-Para atualizar os scripts, edite os arquivos em `src/ServerScriptService/AuroraPrototype`, execute `powershell -ExecutionPolicy Bypass -File tools/Build-Model.ps1`, remova a cópia antiga de `AuroraPrototype` no Studio e importe o novo `.rbxmx`. A pasta `Studio` local não sincroniza automaticamente com o Studio.
+Siga o painel **MISSÕES**: conversar, treinar, voltar ao instrutor, derrotar três slimes e voltar para receber o martelo raro. As posições 2 a 5 da barra ainda são futuras habilidades. O mapa do canto é esquemático.
 
-O teste de salvamento exige uma experiência de teste publicada separada com acesso do Studio a serviços de API. Sem esse acesso, o jogo avisa na HUD que o progresso da sessão não será gravado. No Studio, o cenário visual, os slimes, a HUD e a primeira conversa com o instrutor foram verificados; o fluxo completo com **F**, as missões completas e a reconexão ainda precisam de teste.
+O aviso de teste local significa que o progresso vale somente naquela partida. O cenário salvo permanece no arquivo ao parar o teste.
+
+## Onde editar no Explorer
+
+| Local no Studio | Conteúdo |
+| --- | --- |
+| `Workspace > Terrain` | Relevo, chão, água e grama; use o Editor de terreno. |
+| `Workspace > AuroraWorld > VilaDaAurora` | Casas. |
+| `Workspace > AuroraWorld > Vegetacao` | Árvores e flores. |
+| `Workspace > AuroraWorld > Rochas` | Pedras do campo. |
+| `Workspace > AuroraWorld > Aderecos` | Cercas, lanternas, barris e poço. |
+| `Workspace > AuroraWorld > Personagens` | Aldric e boneco de treinamento. |
+| `Workspace > AuroraWorld > GrutaDosCristais` | Pedras e cristais da entrada. |
+| `Workspace > AuroraWorld > Marcadores` | Posição inicial e três pontos de nascimento de slimes. |
+| `ServerScriptService > AuroraGame` | Código do jogo. |
+
+Edite com o teste parado e use **Arquivo > Salvar em arquivo**. As alterações de cenário são preservadas: o gerador reconhece `AuroraWorld` e não refaz a ilha ao apertar Play. Slimes e interface são criados durante a partida.
+
+## Atualizar o código
+
+As fontes ficam em `src/ServerScriptService/AuroraPrototype`. `Art` contém os modelos, `WorldBuilder` cria o terreno e distribui objetos, `PaladinVisual` monta o equipamento e `Client` cria a interface. Os outros módulos cuidam de perfil, missões e inimigos.
+
+Depois de editar fontes locais, execute na pasta do projeto:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/Build-Model.ps1
+```
+
+O comando atualiza `Studio/ServerScriptService/AuroraPrototype.rbxmx`. Ele não sincroniza automaticamente com o lugar aberto. Para atualizar, salve uma cópia do lugar, desative o Bootstrap da pasta antiga, importe o pacote novo em ServerScriptService e mantenha apenas um Bootstrap ativo. Depois de conferir a atualização, a pasta antiga pode ser arquivada fora de ServerScriptService. O mapa em Workspace pode continuar o mesmo.
+
+Alterar `Art` ou a geração em `WorldBuilder` não reconstrói automaticamente um cenário já salvo. Para experimentar uma geração nova, use um lugar separado:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tools/Build-Place.ps1
+```
+
+Abra `build/IlhaDaAurora.source.rbxlx`, ainda sem o cenário montado. Antes de Play, execute na Command Bar:
+
+```lua
+require(game.ServerScriptService.AuroraGame.WorldBuilder).Build()
+```
+
+Salve essa experiência com outro nome para comparar com a ilha editada.
+
+## Testes
+
+Já verificados: cenário, equipamento, E/F, fluxo das duas missões, combate, recompensas únicas e respawn. Para repetir o teste automático, inicie Play local com Q01 e sem DataStore; no contexto Servidor, insira um Script temporário em ServerScriptService e cole `tools/Studio-SmokeTest.luau`. O resultado esperado na Saída é `AURORA_SMOKE_OK`. Pare o teste ao concluir; esse Script não deve fazer parte do lugar publicado.
+
+Ainda pendentes: dois jogadores, salvamento/reconexão em experiência de teste publicada, celulares e otimização. O lugar local não foi publicado.

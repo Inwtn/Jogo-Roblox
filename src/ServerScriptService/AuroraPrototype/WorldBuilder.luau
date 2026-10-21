@@ -126,7 +126,10 @@ end
 function World.Build()
 	local existing=workspace:FindFirstChild("AuroraWorld")
 	if existing then return existing end -- preserva edições manuais.
-	createTerrain(); World.Lighting()
+	createTerrain()
+	-- Aguarda o Studio atualizar a colisão dos voxels antes de posicionar os modelos.
+	task.wait(0.2)
+	World.Lighting()
 	local world=Art.Model(workspace,"AuroraWorld")
 	world:SetAttribute("ArtVersion",World.Version); world:SetAttribute("Origin",World.Origin)
 	local village=Art.Model(world,"VilaDaAurora")

@@ -1,37 +1,42 @@
-# Ilha da Aurora — primeira fatia jogável
+﻿# Ilha da Aurora — área inicial jogável
 
-Este repositório começa a implementar o MVP do RPG. O arquivo `MeuJogoRoblox.rbxl.rbxl` já contém o protótipo testado no Roblox Studio. O pacote `Studio/ServerScriptService/AuroraPrototype.rbxmx` permite instalar a mesma versão em outro lugar.
+Abra **Studio/IlhaDaAurora.rbxlx** no Roblox Studio. O terreno e os modelos já estão montados e podem ser editados antes de apertar Play.
 
-O plano cita `IlhaInicial.rbxlx`, mas esse arquivo não está nesta pasta. Ainda precisamos conferir no Studio se o lugar binário disponível contém a ilha descrita.
+## Implementado nesta versão
 
-## Conteúdo desta etapa
+- Ilha com terreno orgânico, estrada de terra, rio, colinas e gruta de cristais.
+- Vila com três casas, telhados azuis, madeira aparente, janelas, lanternas, poço e cercas.
+- Árvores com copas facetadas, raízes, rochas e flores.
+- Paladino com capa, ombreiras, escudo e martelo; movimento do martelo e indicação de impacto.
+- Instrutor Aldric, boneco de treino, três slimes e duas missões com EXP, moedas e martelo raro.
+- HUD azul e dourada, missão atual, vida, EXP, moedas, mapa esquemático e barra de ações.
 
-- Prado de teste gerado ao iniciar o servidor: vila medieval, estrada, cercas, árvores, penhascos e caverna, afastado da baseplate original.
-- Paladino com ataque básico validado no servidor; boneco de treino e três slimes com perseguição, ataque, retorno e reaparecimento.
-- Q01 (falar com instrutor e acertar o boneco) e Q02 (derrotar três slimes e voltar ao instrutor), recompensas únicas, nível, moedas e martelo raro.
-- Perfil salvo em `AuroraProfiles_Dev_v1` com bloqueio de sessão, salvamento periódico e modo somente leitura se o carregamento falhar.
-- HUD de RPG no PC com localização, minimapa, missão, barras de vida e EXP, moedas e barra de ações. O paladino recebe capa, escudo e martelo visuais; o martelo fica dourado ao conquistar a versão rara.
+## Abrir e jogar
 
-A direção visual foi registrada em `DIRECAO_VISUAL.md`. Esta versão usa peças e materiais nativos do Roblox para definir composição e jogabilidade. Modelos, texturas e animações finais ainda serão produzidos.
+1. No Studio, use **Arquivo > Abrir do arquivo** e escolha `Studio/IlhaDaAurora.rbxlx`.
+2. Clique em **Play** (F5).
+3. Converse com Aldric usando **E**, acerte o boneco usando **F** e volte a Aldric.
+4. Derrote três slimes no campo: aproxime-se e **clique no inimigo**, ou aponte o mouse para ele e pressione **1**. Volte a Aldric para receber a recompensa.
 
-## Como testar no Studio
+O guia de edição está em [Studio/GUIA.md](Studio/GUIA.md).
 
-1. Abra `MeuJogoRoblox.rbxl.rbxl` no Roblox Studio e aperte **Play**. O pacote já está instalado nesse arquivo. Se aparecer uma janela **Servidor** sem personagem, escolha **Teste > Adicionar clientes** e continue na janela do cliente.
-2. O instrutor azul e o boneco de madeira aparecem à frente do jogador. Pressione **E** perto do instrutor, aproxime-se do boneco e clique nele ou pressione **F**. Volte ao instrutor, derrote três slimes verdes e converse com ele novamente. O painel **MISSÕES**, à direita, indica cada passo. Clique ou pressione **1** para atacar os slimes.
-3. Para instalar em outro lugar, importe `Studio/ServerScriptService/AuroraPrototype.rbxmx` diretamente em `ServerScriptService`. Se o pacote não existir, execute `powershell -ExecutionPolicy Bypass -File tools/Build-Model.ps1` na pasta do projeto.
-4. Para testar persistência, publique apenas uma **experiência de teste separada** e habilite **Game Settings > Security > Enable Studio Access to API Services** nela. Sem acesso a DataStore, a sessão abre em modo somente leitura e as mudanças não são gravadas.
-5. Teste em **2 Players**: ambos devem ver os mesmos slimes. Saia e entre novamente para conferir nível, moedas, conclusão das missões e martelo raro.
+## Arquivos
 
-Os arquivos em `src` são a fonte do pacote. Depois de alterar algum deles, execute `tools/Build-Model.ps1` e reimporte o modelo. Exclua a instância antiga de `AuroraPrototype` antes de importar outra cópia para não iniciar dois servidores de jogo. O gerador da arena cria apenas peças temporárias durante o Play; ele não salva geometria no lugar.
-
-## Estado dos marcos
-
-| Marco | Estado |
+| Caminho | Finalidade |
 | --- | --- |
-| M01 | Mapa original ainda precisa de revisão visual e teste de rotas no Studio. A arena provisória permite testar os sistemas sem depender dessa revisão. |
-| M02 | Prado, slimes e HUD iniciam no Studio; combate com dois jogadores ainda precisa de teste. |
-| M03 | Modo sem salvamento verificado em lugar não publicado; conclusão das missões e reconexão com DataStore ainda precisam de teste. |
+| `Studio/IlhaDaAurora.rbxlx` | Lugar completo, editável e pronto para abrir. |
+| `src/ServerScriptService/AuroraPrototype/` | Fontes dos dez scripts e módulos. O nome da pasta é legado. |
+| `Studio/ServerScriptService/AuroraPrototype.rbxmx` | Pacote somente de scripts, para instalação em outro lugar. |
+| `tools/Build-Model.ps1` | Atualiza o pacote de scripts e verifica a serialização XML. |
+| `tools/Build-Place.ps1` | Gera um lugar inicial em `build/IlhaDaAurora.source.rbxlx`; não altera o lugar completo em Studio. |
+| `tools/Studio-SmokeTest.luau` | Teste de integração para uma sessão local sem salvamento. |
 
-## Próximo trabalho
+## Verificação realizada
 
-Substituir as peças provisórias por modelos e texturas próprios, adicionar animações de ataque e ligar os spawns e o instrutor à Ilha da Aurora definitiva. Depois avançar para inventário e poção (M04).
+Testado no Roblox Studio com um jogador: carregamento do cenário, equipamento após carregar o avatar, teclas E e F e atualização da HUD. O teste executado como Script temporário no servidor confirmou Q01 e Q02, três abates, alcance, intervalo entre ataques, recompensas únicas, nível 2, martelo raro e reaparecimento dos slimes. Resultado: `AURORA_SMOKE_OK`.
+
+Sem DataStore disponível, a sessão permite jogar e avisa que o progresso não será salvo. Persistência após reconexão, multiplayer e controles/desempenho em celular ainda precisam de teste.
+
+## Próxima etapa
+
+Esta é a primeira área em desenvolvimento. Ainda faltam inventário utilizável, poções, outras habilidades, mais missões, chefes, áudio e animações completas. A referência visual orienta a composição; modelos e materiais ainda precisam de refinamento e otimização, especialmente as copas das árvores.

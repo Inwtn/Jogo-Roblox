@@ -29,7 +29,7 @@ $workspace = Service 'Workspace'
 $terrain = $document.CreateElement('Item')
 $terrain.SetAttribute('class', 'Terrain')
 $terrain.SetAttribute('referent', 'TERRAIN_AURORA')
-$terrain.InnerXml = '<Properties><string name="Name">Terrain</string><bool name="Decoration">true</bool><float name="GrassLength">0.7</float></Properties>'
+$terrain.InnerXml = '<Properties><string name="Name">Terrain</string><bool name="Decoration">true</bool><float name="GrassLength">0.25</float></Properties>'
 $workspace.AppendChild($terrain) | Out-Null
 $server = Service 'ServerScriptService'
 $server.AppendChild($gameCode) | Out-Null
@@ -52,4 +52,4 @@ $writer = [System.Xml.XmlWriter]::Create($output, $settings)
 try { $document.Save($writer) } finally { $writer.Close() }
 Write-Output $output
 Write-Output 'No Studio, antes de Play: require(game.ServerScriptService.AuroraGame.WorldBuilder).Build()'
-Write-Output 'Salve como Studio/IlhaDaAurora.rbxl para manter o mapa editável.'
+Write-Output 'Salve com outro nome em formato .rbxlx para comparar sem substituir Studio/IlhaDaAurora.rbxlx.'

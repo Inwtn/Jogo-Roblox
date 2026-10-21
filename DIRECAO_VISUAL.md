@@ -14,9 +14,11 @@ Referência fornecida pelo usuário: RPG de fantasia estilizado, com vila mediev
 
 - Placa de localização no alto, minimapa no canto superior direito.
 - Missão atual à direita, sem esconder os controles essenciais.
-- Vida, EXP e moedas no canto inferior esquerdo; barra de ações no centro inferior.
+- Vida e EXP no canto superior esquerdo, abaixo dos controles do Roblox; moedas no canto inferior esquerdo; barra de ações no centro inferior.
 - Somente o ataque básico está funcional nesta etapa. Outros espaços da barra devem continuar claramente marcados como futuros.
 
 ## Próxima etapa de arte
 
-O cenário atual é um **blockout jogável** feito com peças nativas do Roblox. Para alcançar a qualidade da referência, substituir as casas, árvores, rochas, caverna, slimes e equipamento por modelos estilizados próprios; criar texturas e ícones coerentes; animar ataque, deslocamento e reações dos inimigos; então revisar iluminação e desempenho em PC e celular.
+O cenário atual já está montado em `Studio/IlhaDaAurora.rbxlx`, com terreno orgânico e modelos próprios feitos de peças nativas: casas com telhados e vigas, árvores de copas facetadas, raízes, flores, pedras e adereços. O equipamento acompanha o avatar; o martelo tem movimento de ataque e o impacto tem indicação visual. Os slimes quicam ao se deslocar.
+
+Para avançar em direção à referência, refinar as silhuetas, produzir texturas e ícones coerentes, animar corpo e reações, adicionar áudio e reduzir a quantidade de peças das copas por meio de malhas otimizadas. Revisar desempenho em PC e celular antes de expandir o mapa. A aparência atual ainda não é a arte final.
