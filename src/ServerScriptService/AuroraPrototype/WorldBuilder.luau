@@ -1,10 +1,11 @@
 local Art = require(script.Parent.Art)
+local ScenePolish = require(script.Parent.ScenePolish)
 local Config = require(script.Parent.Config)
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local Terrain = workspace.Terrain
 local V, C = Vector3.new, Color3.fromRGB
-local World = { Origin=V(Config.TestArenaCenter.X,0,Config.TestArenaCenter.Z), Version=2 }
+local World = { Origin=V(Config.TestArenaCenter.X,0,Config.TestArenaCenter.Z), Version=3 }
 local function smooth(a,b,t)
 	t=math.clamp((t-a)/(b-a),0,1)
 	return t*t*(3-2*t)
@@ -78,18 +79,27 @@ local function createTerrain()
 end
 
 function World.Lighting()
-	Lighting.ClockTime=15.2; Lighting.Brightness=2.6; Lighting.GlobalShadows=true
-	Lighting.Ambient=C(93,104,120); Lighting.OutdoorAmbient=C(124,141,157)
-	Lighting.EnvironmentDiffuseScale=0.65; Lighting.EnvironmentSpecularScale=0.5; Lighting.ExposureCompensation=0.05
+	Lighting.ClockTime=16.1; Lighting.Brightness=2.5; Lighting.GlobalShadows=true
+	Lighting.Ambient=C(102,105,117); Lighting.OutdoorAmbient=C(145,145,149)
+	Lighting.EnvironmentDiffuseScale=0.7; Lighting.EnvironmentSpecularScale=0.48; Lighting.ExposureCompensation=0.04
 	local atmosphere=Lighting:FindFirstChild("AuroraAtmosphere") or Instance.new("Atmosphere")
 	atmosphere.Name="AuroraAtmosphere"; atmosphere.Density=0.25; atmosphere.Offset=0.12
-	atmosphere.Color=C(213,227,235); atmosphere.Decay=C(151,177,192); atmosphere.Glare=0.1; atmosphere.Haze=1.5; atmosphere.Parent=Lighting
+	atmosphere.Color=C(230,224,213); atmosphere.Decay=C(168,174,185); atmosphere.Glare=0.12; atmosphere.Haze=1.2; atmosphere.Parent=Lighting
 	local grade=Lighting:FindFirstChild("AuroraColor") or Instance.new("ColorCorrectionEffect")
-	grade.Name="AuroraColor"; grade.Saturation=0.08; grade.Contrast=0.1; grade.Brightness=0.01; grade.TintColor=C(255,246,229); grade.Parent=Lighting
+	grade.Name="AuroraColor"; grade.Saturation=0.06; grade.Contrast=0.12; grade.Brightness=0.01; grade.TintColor=C(255,244,222); grade.Parent=Lighting
 	local bloom=Lighting:FindFirstChild("AuroraBloom") or Instance.new("BloomEffect")
 	bloom.Name="AuroraBloom"; bloom.Intensity=0.12; bloom.Size=18; bloom.Threshold=1.5; bloom.Parent=Lighting
 	local clouds=Terrain:FindFirstChild("AuroraClouds") or Instance.new("Clouds")
 	clouds.Name="AuroraClouds"; clouds.Cover=0.35; clouds.Density=0.45; clouds.Color=C(253,249,236); clouds.Parent=Terrain
+end
+
+function World.Refine()
+	local existing=workspace:FindFirstChild("AuroraWorld")
+	if not existing then return World.Build() end
+	World.Lighting()
+	local details=ScenePolish.Apply(existing,World.Point)
+	if details then existing:SetAttribute("ArtVersion",World.Version) end
+	return existing
 end
 
 local function caption(part,text,color,offset)
@@ -176,6 +186,7 @@ function World.Build()
 		Art.Part(props,"Seixo",V(rand:NextNumber(0.3,0.9),0.25,rand:NextNumber(0.3,0.7)),World.Point(x,z,0.15),C(162,155,128),Enum.Material.Rock,"Ball")
 	end
 	cave(world)
+	ScenePolish.Apply(world,World.Point)
 	local _,trainer=Art.Trainer(actors,World.Point(-9,-3))
 	caption(trainer,"!\nAldric · Instrutor",C(255,217,125),4.2)
 	prompt(trainer,"Conversar","Conversar","Aldric, instrutor da Aurora",Enum.KeyCode.E)
